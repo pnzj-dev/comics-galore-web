@@ -1,0 +1,156 @@
+package scripts
+
+var globalScriptHandle = templ.NewOnceHandle()
+
+templ GlobalScript() {
+@globalScriptHandle.Once() {
+<script defer src="/assets/js/alpinejs/3.x.x/focus.min.js"></script>
+<script defer src="/assets/js/alpinejs/3.x.x/alpinejs.min.js"></script>
+<script defer src="/assets/js/libarchive/2.0.2/libarchive.min.js" type="module"></script>
+<script defer>
+    document.addEventListener('alpine:init', () => {
+
+        Alpine.data('globalUtils', () => ({
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            },
+            formatDate(isoString) {
+                const date = new Date(isoString);
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+            },
+            formatNumber(num, decimals = 1) {
+                const suffixes = [
+                    {value: 1e12, symbol: "T"},
+                    {value: 1e9, symbol: "B"},
+                    {value: 1e6, symbol: "M"},
+                    {value: 1e3, symbol: "K"}
+                ];
+                if (Math.abs(num) < 1000) {
+                    return num.toString();
+                }
+                const sign = Math.sign(num);
+                const absNum = Math.abs(num);
+                for (let i = 0; i < suffixes.length; i++) {
+                    const {value, symbol} = suffixes[i];
+                    if (absNum >= value) {
+                        let abbreviated = (absNum / value).toFixed(decimals);
+                        abbreviated = abbreviated.replace(/\.0+$|(\.[0-9]*[1-9])0+$/, '$1');
+                        return (sign * parseFloat(abbreviated)) + symbol;
+                    }
+                }
+                return (sign * absNum).toFixed(decimals) + 'T+';
+            }
+        }));
+
+        Alpine.data('searchComponent', () => ({
+            filtersOpen: false,
+            // State to hold all filter values
+            filters: {
+                query: '',          // Main search query
+                category: '',
+                title: '',
+                description: '',
+                sizeMin: null,      // Min file size
+                sizeMax: null,      // Max file size
+                pagesMin: null,     // Min page count
+                pagesMax: null,     // Max page count
+                dateMin: '',        // Min publication date
+                dateMax: '',        // Max publication date
+            },
+
+            // Function to simulate or execute search
+            performSearch() {
+                console.log('--- Performing Search ---');
+                console.log('Filters:', JSON.stringify(this.filters, null, 2));
+            },
+
+            // Function to reset all filters
+            resetFilters() {
+                this.filters = {
+                    query: '',
+                    category: '',
+                    title: '',
+                    description: '',
+                    sizeMin: null,
+                    sizeMax: null,
+                    pagesMin: null,
+                    pagesMax: null,
+                    dateMin: '',
+                    dateMax: '',
+                };
+                console.log('Filters have been reset.');
+            }
+        }));
+
+        Alpine.data('archiveUtils', () => ({
+            imageExtensions: ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'],
+
+            countImagesInArchive(file) {
+                if (typeof Archive === 'undefined') {
+                    console.error('Archive library not loaded. Cannot count images.');
+                    return Promise.resolve(0);
+                }
+
+                if (!file || !file.name.match(/\.(rar|zip|cbz|cbr)$/i)) {
+                    return Promise.resolve(0);
+                }
+
+                let result = null;
+
+                return file.arrayBuffer()
+                    .then(buffer => {
+                        result = Archive.open(buffer);
+                        return result.getFilesArray();
+                    })
+                    .then(filesArray => {
+                        let imageCount = 0;
+
+                        for (const entry of filesArray) {
+                            if (entry.pathname) {
+                                const fileName = entry.pathname.toLowerCase();
+                                if (this.imageExtensions.some(ext => fileName.endsWith(ext))) {
+                                    imageCount++;
+                                }
+                            }
+                        }
+                        return imageCount;
+                    })
+                    .catch(e => {
+                        console.error('Error processing archive:', e);
+                        return 0;
+                    })
+                    .finally(() => {
+                        if (result) {
+                            result.close();
+                        }
+                    });
+            },
+        }));
+
+        Alpine.data('libarchive', () => ({
+            init() {
+                if (typeof Archive !== 'undefined') {
+                    Archive.init({
+                        workerUrl: '/assets/js/libarchive/2.0.2/worker-bundle.min.js'
+                    });
+                    console.log('Libarchive initialized');
+                } else {
+                    console.error('Error: Archive global object not found. Ensure libarchive.min.js is loaded with type=\"module\".');
+                }
+            }
+        }));
+    });
+
+    document.addEventListener('alpine:initialized', () => {
+    });
+</script>
+}
+}

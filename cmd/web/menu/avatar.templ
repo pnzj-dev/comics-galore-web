@@ -1,0 +1,124 @@
+package menu
+
+import "comics-galore-web/internal/user"
+
+const (
+IconFavorites = `
+<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>`
+IconUpload = `
+<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+<polyline points="17 8 12 3 7 8"></polyline>
+<line x1="12" y1="3" x2="12" y2="15"></line>`
+IconProfile = `
+<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+<circle cx="12" cy="7" r="4"></circle>`
+IconBilling = `
+<rect width="20" height="14" x="2" y="5" rx="2"></rect>
+<line x1="2" x2="22" y1="10" y2="10"></line>`
+IconSettings = `
+<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
+<circle cx="12" cy="12" r="3"></circle>`
+IconSupport = `
+<circle cx="12" cy="12" r="10"></circle>
+<circle cx="12" cy="12" r="4"></circle>
+<line x1="4.93" x2="9.17" y1="4.93" y2="9.17"></line>
+<line x1="14.83" x2="19.07" y1="14.83" y2="19.07"></line>
+<line x1="14.83" x2="19.07" y1="9.17" y2="4.93"></line>
+<line x1="14.83" x2="18.36" y1="9.17" y2="5.64"></line>
+<line x1="4.93" x2="9.17" y1="19.07" y2="14.83"></line>`
+IconLogout = `
+<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+<polyline points="16 17 21 12 16 7"></polyline>
+<line x1="21" x2="9" y1="12" y2="12"></line>`
+)
+
+templ AvatarMenu(user *user.User) {
+<div x-data="{
+		dropdownOpen: false,
+		uploadModalOpen: false,
+		logoutModalOpen: false,
+		profileModalOpen: false,
+		billingModalOpen: false,
+		supportModalOpen: false,
+		settingsModalOpen: false
+	}"
+     class="relative"
+     @keydown.escape.window="dropdownOpen = false; uploadModalOpen = false; profileModalOpen = false; billingModalOpen = false; settingsModalOpen = false; supportModalOpen = false; logoutModalOpen = false;"
+     xmlns:x-transition="http://www.w3.org/1999/xhtml">
+    <button @click="dropdownOpen=true"
+            class="inline-flex justify-center items-center py-2 pr-12 pl-3 h-12 text-sm font-medium bg-white rounded-md border transition-colors text-neutral-700 hover:bg-neutral-100 active:bg-white focus:bg-white focus:outline-none disabled:opacity-50 disabled:pointer-events-none">
+        <img src="" alt="" class="object-cover w-8 h-8 rounded-full border border-neutral-200"
+             onerror="this.onerror=null;this.src='/assets/images/default-avatar-1.svg';"/>
+        <span class="flex flex-col flex-shrink-0 items-start ml-2 h-full leading-none translate-y-px">
+				<span></span>
+				<span class="text-xs font-light text-neutral-400"></span>
+			</span>
+        <svg class="absolute right-0 mr-3 w-5 h-5"
+             xmlns="http://www.w3.org/2000/svg"
+             fill="none"
+             viewBox="0 0 24 24"
+             stroke-width="1.5"
+             stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"></path>
+        </svg>
+    </button>
+    <div x-cloak x-show="dropdownOpen"
+         @click.away="dropdownOpen=false"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="-translate-y-2 opacity-0"
+         x-transition:enter-end="translate-y-0 opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="absolute top-0 left-1/2 z-50 mt-12 w-56 -translate-x-1/2">
+        <div class="p-1 mt-1 bg-white rounded-md border shadow-lg border-neutral-200/70 text-neutral-700">
+            <div class="px-2 py-1.5 text-sm font-semibold">My Account</div>
+            <div class="-mx-1 my-1 h-px bg-neutral-200"></div>
+            @MenuItem(
+            "Favorites",
+            "⇧⌘F",
+            "dropdownOpen = false",
+            IconFavorites,
+            )
+            @MenuItem(
+            "Upload",
+            "⇧⌘U",
+            "uploadModalOpen = true; dropdownOpen = false",
+            IconUpload,
+            )
+            @MenuItem(
+            "Profile",
+            "⇧⌘P",
+            "profileModalOpen = true; dropdownOpen = false",
+            IconProfile,
+            )
+            @MenuItem(
+            "Billing",
+            "⌘B",
+            "billingModalOpen = true; dropdownOpen = false",
+            IconBilling,
+            )
+            @MenuItem(
+            "Settings",
+            "⌘S",
+            "settingsModalOpen = true; dropdownOpen = false",
+            IconSettings,
+            )
+            @MenuItem(
+            "Support",
+            "",
+            "supportModalOpen = true; dropdownOpen = false",
+            IconSupport,
+            )
+            <div class="-mx-1 my-1 h-px bg-neutral-200"></div>
+            @MenuItem(
+            "Log out",
+            "⇧⌘Q",
+            "logoutModalOpen = true; dropdownOpen = false",
+            IconLogout,
+            )
+        </div>
+    </div>
+</div>
+}

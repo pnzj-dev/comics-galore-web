@@ -1,0 +1,55 @@
+package scripts
+
+var storeScriptHandle = templ.NewOnceHandle()
+
+templ StoreScript() {
+@storeScriptHandle.Once() {
+<script defer>
+    document.addEventListener('alpine:init', () => {
+        // 1. Define the Global State Store (e.g., for i18n)
+        Alpine.store('i18n', {
+            i18n: {},
+            currentLang: 'en',
+            isInitialized: false,
+
+            init() {
+                Promise.all([
+                    fetch('/assets/i18n/en.json').then(res => res.json()),
+                    fetch('/assets/i18n/fr.json').then(res => res.json())
+                ])
+                    .then(([enTranslations, frTranslations]) => {
+                        this.i18n.en = enTranslations;
+                        this.i18n.fr = frTranslations;
+                        this.isInitialized = true;
+                        console.log("i18n data initialized.");
+                    })
+                    .catch(error => {
+                        console.error("Failed to load translations: ", error);
+                    });
+            },
+
+            t(key, lang = this.currentLang) {
+                const translation = this.i18n[lang] ? this.i18n[lang][key] : key;
+                return typeof translation === 'function' ? translation : translation || key;
+            },
+
+            setLang(lang) {
+                this.currentLang = lang;
+            }
+        });
+
+        // 2. Define the Theme Store
+        Alpine.store('theme', {
+            darkMode: false,
+            toggle() {
+                this.darkMode = !this.darkMode;
+            }
+        });
+
+        // 3. Initialize any store setup that needs to run immediately
+        //Alpine.store('i18n').init(); // Assuming your i18n store has an init function
+
+    });
+</script>
+}
+}

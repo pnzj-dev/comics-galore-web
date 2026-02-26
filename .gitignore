@@ -22,7 +22,7 @@ tmp/
 .vscode
 .idea
 
-# .env file
+# .config file
 .env
 
 # Project build

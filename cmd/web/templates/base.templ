@@ -1,0 +1,30 @@
+package templates
+
+import "comics-galore-web/cmd/web"
+import "comics-galore-web/cmd/web/scripts"
+
+templ BaseLayout(headerButton templ.Component, contents templ.Component) {
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Comics Galore</title>
+    <link href="/assets/css/output.css" rel="stylesheet"/>
+    <link href="/assets/css/global.css" rel="stylesheet"/>
+    @scripts.GlobalScript()
+    @scripts.StoreScript()
+    <!-- Optional favicon or meta tags -->
+    <!--<link rel="icon" href="/assets/images/favicon.ico" /> -->
+</head>
+<body x-data="globalUtils()" class="flex flex-col min-h-screen bg-gray-50">
+<div class="flex flex-col flex-grow w-full">
+    @web.Header(headerButton)
+    <main class="flex-grow items-center justify-between w-full max-w-7xl mx-auto py-4">
+        @contents
+    </main>
+    @web.Footer()
+</div>
+</body>
+</html>
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="75px" height="50px" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Image Load Error Placeholder</title>
+    <desc>An icon indicating that an image failed to load.</desc>
+
+    <defs>
+        <color id="bgColor">#E5E7EB</color>
+        <color id="iconColor">#9CA3AF</color>
+        <color id="errorColor">#EF4444</color>
+    </defs>
+
+    <g id="placeholder-group" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="background" fill="var(--color-bg, #E5E7EB)" x="0" y="0" width="100" height="100"></rect>
+
+        <g id="icon-picture" transform="translate(15.000000, 20.000000)" stroke="var(--color-icon, #9CA3AF)"
+           stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+            <rect id="frame" x="2.5" y="2.5" width="65" height="45" rx="3"></rect>
+            <circle id="sun" cx="17.5" cy="15.5" r="4"></circle>
+            <path d="M2.5,47.5 L22.5,27.5 L37.5,37.5 L52.5,22.5 L67.5,37.5 L67.5,47.5 L2.5,47.5 Z"
+                  id="mountains"></path>
+        </g>
+        <line x1="10" y1="10" x2="90" y2="90" stroke="var(--color-error, #EF4444)" stroke-width="6" stroke-linecap="round" id="error-line"></line>
+    </g>
+</svg>

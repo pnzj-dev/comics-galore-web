@@ -1,47 +1,58 @@
+version: '3.8'
+
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: prod
-    restart: unless-stopped
-    ports:
-      - ${PORT}:${PORT}
+  postgres:
+    image: postgres:16-alpine
+    container_name: blog_db
     environment:
-      APP_ENV: ${APP_ENV}
-      PORT: ${PORT}
-      BLUEPRINT_DB_HOST: ${BLUEPRINT_DB_HOST}
-      BLUEPRINT_DB_PORT: ${BLUEPRINT_DB_PORT}
-      BLUEPRINT_DB_DATABASE: ${BLUEPRINT_DB_DATABASE}
-      BLUEPRINT_DB_USERNAME: ${BLUEPRINT_DB_USERNAME}
-      BLUEPRINT_DB_PASSWORD: ${BLUEPRINT_DB_PASSWORD}
-      BLUEPRINT_DB_SCHEMA: ${BLUEPRINT_DB_SCHEMA}
-    depends_on:
-      psql_bp:
-        condition: service_healthy
-    networks:
-      - blueprint
-  psql_bp:
-    image: postgres:latest
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${BLUEPRINT_DB_DATABASE}
-      POSTGRES_USER: ${BLUEPRINT_DB_USERNAME}
-      POSTGRES_PASSWORD: ${BLUEPRINT_DB_PASSWORD}
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: blog_dev
     ports:
-      - "${BLUEPRINT_DB_PORT}:5432"
-    volumes:
-      - psql_volume_bp:/var/lib/postgresql/data
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${BLUEPRINT_DB_USERNAME} -d ${BLUEPRINT_DB_DATABASE}'"]
+      test: [ "CMD-SHELL", "pg_isready -U user -d blog_dev" ]
       interval: 5s
       timeout: 5s
-      retries: 3
-      start_period: 15s
-    networks:
-      - blueprint
+      retries: 5
 
-volumes:
-  psql_volume_bp:
-networks:
-  blueprint:
+  redis:
+    image: redis:7-alpine
+    container_name: blog_cache
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack
+    container_name: blog_s3
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - DEBUG=1
+    volumes:
+      - "./scripts:/etc/localstack/init/ready.d" # Runs our init-s3.sh
+
+  app:
+    build: .
+    container_name: blog_api
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_URL=postgres://user:password@postgres:5432/blog_dev?sslmode=disable
+      - REDIS_URL=redis:6379
+      - S3_ENDPOINT=http://localstack:4566
+      - S3_REGION=us-east-1
+      - S3_BUCKET=my-comics-bucket
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy

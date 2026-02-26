@@ -1,24 +1,15 @@
-FROM golang:1.24.4-alpine AS build
-RUN apk add --no-cache curl libstdc++ libgcc
-
+# Build Stage
+FROM golang:1.23-alpine AS builder
 WORKDIR /app
-
 COPY go.mod go.sum ./
 RUN go mod download
-
 COPY . .
-RUN go install github.com/a-h/templ/cmd/templ@latest && \
-    templ generate && \
-    curl -sL https://github.com/tailwindlabs/tailwindcss/releases/latest/download/tailwindcss-linux-x64-musl -o tailwindcss && \
-    chmod +x tailwindcss && \
-    ./tailwindcss -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/api
 
-RUN go build -o main cmd/api/main.go
-
-FROM alpine:3.20.1 AS prod
-WORKDIR /app
-COPY --from=build /app/main /app/main
-EXPOSE ${PORT}
+# Run Stage
+FROM alpine:latest
+WORKDIR /root/
+COPY --from=builder /app/main .
+COPY --from=builder /app/.env . 
+EXPOSE 3000
 CMD ["./main"]
-
-

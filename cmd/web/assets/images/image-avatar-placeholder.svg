@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100px" height="100px" viewBox="0 0 100 100" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <title>Default User Avatar Placeholder</title>
+    <desc>A generic icon representing a user profile or avatar.</desc>
+    <defs>
+        <color id="avatarBgColor">#E5E7EB</color>
+        <color id="avatarIconColor">#9CA3AF</color>
+    </defs>
+    <g id="avatar-placeholder" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <circle id="background-circle" fill="var(--color-avatar-bg, #E5E7EB)" cx="50" cy="50" r="50"></circle>
+        <g id="icon-person" fill="var(--color-avatar-icon, #9CA3AF)">
+            <circle id="head" cx="50" cy="40" r="18"></circle>
+            <path d="M15,100 C 15,70 85,70 85,100 Z" id="shoulders"></path>
+        </g>
+    </g>
+</svg>

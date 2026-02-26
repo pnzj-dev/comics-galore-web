@@ -1,65 +1,111 @@
 package main
 
 import (
+	"comics-galore-web/internal/config"
+	"comics-galore-web/internal/database"
+	"comics-galore-web/internal/messaging"
+	"comics-galore-web/internal/picture"
 	"comics-galore-web/internal/server"
 	"context"
-	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
-
-	_ "github.com/joho/godotenv/autoload"
 )
 
-func gracefulShutdown(fiberServer *server.FiberServer, done chan bool) {
-	// Create context that listens for the interrupt signal from the OS.
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+func main() {
+	// 1. Initialize Structured Logger (JSON for production)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger) // Set as default for any global calls
+
+	// 2. Setup root context for signal trapping
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Listen for the interrupt signal.
-	<-ctx.Done()
-
-	log.Println("shutting down gracefully, press Ctrl+C again to force")
-	stop() // Allow Ctrl+C to force shutdown
-
-	// The context is used to inform the server it has 5 seconds to finish
-	// the request it is currently handling
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := fiberServer.ShutdownWithContext(ctx); err != nil {
-		log.Printf("Server forced to shutdown with error: %v", err)
+	// 3. Config Service
+	cfg, err := config.NewService(logger)
+	if err != nil {
+		logger.Error("failed to load configuration", "error", err)
+		os.Exit(1)
 	}
 
-	log.Println("Server exiting")
+	// 4. Initialize Database Resources
+	dbResource, err := database.NewResources(ctx, cfg.Get().DatabaseDSN)
+	if err != nil {
+		logger.Error("critical database initialization failure", "error", err)
+		os.Exit(1)
+	}
 
-	// Notify the main goroutine that the shutdown is complete
-	done <- true
-}
+	// 5. Initialize Domain Services (Injecting logger and config)
+	picSvc := picture.NewService(cfg, logger, false)
 
-func main() {
+	// Assuming your server struct or a separate messaging service handles WebSockets
+	// msgSvc := messaging.NewService(dbResource.Pool, logger)
 
-	server := server.New()
+	pool := dbResource.GetPool()
 
-	server.RegisterFiberRoutes()
+	deps := server.Deps{
+		Config:    cfg,
+		Logger:    logger,
+		DB:        dbResource,
+		Picture:   picture.NewService(cfg, logger, false),
+		Messaging: messaging.NewService(pool, logger),
+	}
 
-	// Create a done channel to signal when the shutdown is complete
-	done := make(chan bool, 1)
+	// 6. Provision Server
+	internalServer := deps.New()
+	internalServer.RegisterFiberRoutes()
 
+	// 7. Start Server
+	serverErr := make(chan error, 1)
 	go func() {
-		port, _ := strconv.Atoi(os.Getenv("PORT"))
-		err := server.Listen(fmt.Sprintf(":%d", port))
-		if err != nil {
-			panic(fmt.Sprintf("http server error: %s", err))
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "3000"
 		}
+
+		logger.Info("starting server", "port", port, "env", os.Getenv("APP_ENV"))
+		serverErr <- internalServer.Listen(":" + port)
 	}()
 
-	// Run graceful shutdown in a separate goroutine
-	go gracefulShutdown(server, done)
+	// 8. Wait for Signal or Error
+	select {
+	case err := <-serverErr:
+		if err != nil {
+			logger.Error("server startup failed", "error", err)
+			os.Exit(1)
+		}
+	case <-ctx.Done():
+		logger.Info("shutdown signal received")
+	}
 
-	// Wait for the graceful shutdown to complete
-	<-done
-	log.Println("Graceful shutdown complete.")
+	// 9. GRACEFUL SHUTDOWN SEQUENCE (Sequential)
+	// We use a dedicated timeout context for the entire shutdown phase
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	// A. Shutdown HTTP Server (Stop accepting new requests/WebSocket upgrades)
+	logger.Info("shutting down HTTP server...")
+	if err := internalServer.ShutdownWithContext(shutdownCtx); err != nil {
+		logger.Error("HTTP shutdown error", "error", err)
+	}
+
+	// B. Shutdown Background Workers (Picture processing/S3 uploads)
+	logger.Info("waiting for background workers to drain...")
+	if err := picSvc.Shutdown(5 * time.Second); err != nil {
+		logger.Warn("picture service workers failed to drain", "error", err)
+	}
+
+	// C. Shutdown WebSocket Hub (Disconnect clients gracefully)
+	// If you have a specific Hub.Shutdown(), call it here.
+	// internalServer.WS.Shutdown()
+
+	// D. Close Database Pool (Last step: Ensure no queries are in-flight)
+	logger.Info("closing database connections...")
+	dbResource.Close(shutdownCtx)
+
+	logger.Info("graceful shutdown complete. system exited.")
 }

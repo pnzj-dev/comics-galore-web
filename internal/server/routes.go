@@ -1,88 +1,39 @@
 package server
 
 import (
-	"context"
-	"fmt"
-	"log"
-	"time"
-
 	"comics-galore-web/cmd/web"
-	"github.com/a-h/templ"
-	"github.com/gofiber/contrib/websocket"
-	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/adaptor"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/fiber/v2/middleware/filesystem"
-	"net/http"
+	"comics-galore-web/internal/archive"
+	"comics-galore-web/internal/auth"
+	"comics-galore-web/internal/blog"
+	"comics-galore-web/internal/comment"
+	"comics-galore-web/internal/messaging"
+	"comics-galore-web/internal/picture"
+	"comics-galore-web/internal/qrcode"
+	"comics-galore-web/internal/websocket"
+	"github.com/gofiber/fiber/v3/middleware/static"
 )
 
 func (s *FiberServer) RegisterFiberRoutes() {
-	// Apply CORS middleware
-	s.App.Use(cors.New(cors.Config{
-		AllowOrigins:     "*",
-		AllowMethods:     "GET,POST,PUT,DELETE,OPTIONS,PATCH",
-		AllowHeaders:     "Accept,Authorization,Content-Type",
-		AllowCredentials: false, // credentials require explicit origins
-		MaxAge:           300,
-	}))
 
-	s.App.Get("/", s.HelloWorldHandler)
+	blogHandler := blog.NewHandler(s.blog, s.logger)
+	authHandler := auth.NewHandler(s.config, s.logger)
+	qrcodeHandler := qrcode.NewHandler(s.qrcode, s.logger)
+	commentHandler := comment.NewHandler(s.comment, s.logger)
+	pictureHandler := picture.NewHandler(s.picture, s.logger)
+	archiveHandler := archive.NewHandler(s.archive, s.logger)
+	messagingHandler := messaging.NewHandler(s.messaging, s.logger)
+	websocketHandler := websocket.NewHandler(s.logger)
 
-	s.App.Get("/health", s.healthHandler)
+	s.App.Get("/assets/*", static.New("", static.Config{FS: web.Files}))
 
-	s.App.Get("/websocket", websocket.New(s.websocketHandler))
+	s.setupGlobalMiddleware(s.config)
+	authHandler.RegisterRoutes(s.App)
+	blogHandler.RegisterRoutes(s.App)
+	qrcodeHandler.RegisterRoutes(s.App)
+	archiveHandler.RegisterRoutes(s.App)
+	pictureHandler.RegisterRoutes(s.App)
+	commentHandler.RegisterRoutes(s.App)
+	messagingHandler.RegisterRoutes(s.App)
+	websocketHandler.RegisterRoutes(s.App)
 
-	s.App.Use("/assets", filesystem.New(filesystem.Config{
-		Root:       http.FS(web.Files),
-		PathPrefix: "assets",
-		Browse:     false,
-	}))
-
-	s.App.Get("/web", adaptor.HTTPHandler(templ.Handler(web.HelloForm())))
-
-	s.App.Post("/hello", func(c *fiber.Ctx) error {
-		return web.HelloWebHandler(c)
-	})
-
-}
-
-func (s *FiberServer) HelloWorldHandler(c *fiber.Ctx) error {
-	resp := fiber.Map{
-		"message": "Hello World",
-	}
-
-	return c.JSON(resp)
-}
-
-func (s *FiberServer) healthHandler(c *fiber.Ctx) error {
-	return c.JSON(s.db.Health())
-}
-
-func (s *FiberServer) websocketHandler(con *websocket.Conn) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	go func() {
-		for {
-			_, _, err := con.ReadMessage()
-			if err != nil {
-				cancel()
-				log.Println("Receiver Closing", err)
-				break
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			payload := fmt.Sprintf("server timestamp: %d", time.Now().UnixNano())
-			if err := con.WriteMessage(websocket.TextMessage, []byte(payload)); err != nil {
-				log.Printf("could not write to socket: %v", err)
-				return
-			}
-			time.Sleep(time.Second * 2)
-		}
-	}
 }
