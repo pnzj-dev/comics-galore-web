@@ -1,0 +1,25 @@
+meta {
+  name: sign-out
+  type: http
+  seq: 4
+}
+
+post {
+  url: http://127.0.0.1:8080/api/v1/auth/sign-out
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+  Origin: http://localhost:8080
+}
+
+body:json {
+  {}
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

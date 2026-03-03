@@ -1,0 +1,29 @@
+meta {
+  name: sign-up
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://127.0.0.1:8080/api/v1/auth/sign-up/email
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "name": "Test User",
+    "email": "test@example.com",
+    "password": "Password123!",
+    "callbackURL": "http://localhost:8080"
+  }
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}
