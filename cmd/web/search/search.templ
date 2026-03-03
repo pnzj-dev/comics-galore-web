@@ -1,0 +1,117 @@
+package search
+
+templ Search() {
+<div class="p-6">
+    <form action="/search" method="GET">
+        <div x-data="{ filtersOpen: false }" class="bg-white rounded-lg shadow-lg border border-gray-200">
+
+            <div class="flex p-4 space-x-2">
+                <div class="relative flex-grow">
+                    <input name="query" type="search" placeholder="Search by title, author, or keyword..."
+                           class="w-full pl-4 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150">
+                </div>
+
+                <button @click="filtersOpen = !filtersOpen" type="button"
+                        class="p-3 rounded-lg text-white transition duration-150"
+                        :class="filtersOpen ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-500 hover:bg-gray-600'"
+                        aria-label="Toggle Advanced Filters">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                              d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
+                              clip-rule="evenodd"/>
+                    </svg>
+                </button>
+
+                <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-150">
+                    Search
+                </button>
+            </div>
+
+            <div x-cloak x-show="filtersOpen"
+                 x-transition:enter="transition ease-out duration-300"
+                 x-transition:enter-start="opacity-0 transform -translate-y-2"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 x-transition:leave="transition ease-in duration-200"
+                 x-transition:leave-start="opacity-100 transform translate-y-0"
+                 x-transition:leave-end="opacity-0 transform -translate-y-2"
+                 class="p-4 border-t border-gray-200 bg-gray-50">
+
+                <h3 class="text-md font-medium text-gray-700 mb-4">Advanced Filters</h3>
+
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+
+                    <div>
+                        <label for="category" class="block text-sm font-medium text-gray-700">Category</label>
+                        <select name="category" id="category"
+                                class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">All Categories</option>
+                            <option value="fantasy">Fantasy</option>
+                            <option value="scifi">Sci-Fi</option>
+                            <option value="horror">Horror</option>
+                            <option value="action">Action</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="title" class="block text-sm font-medium text-gray-700">Exact Title Match</label>
+                        <input name="title" type="text" id="title" placeholder="e.g., The Stone Citadel"
+                               class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-gray-700">Description
+                            Keyword</label>
+                        <input name="description" type="text" id="description"
+                               placeholder="e.g., robot, magic, dog"
+                               class="mt-1 block w-full border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div class="hidden lg:block"></div>
+
+                    <div class="col-span-full md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">File Size (MB)</label>
+                        <div class="flex space-x-4">
+                            <input name="size_min" type="number" placeholder="Min (MB)" min="0"
+                                   class="w-1/2 border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input name="size_max" type="number" placeholder="Max (MB)" min="0"
+                                   class="w-1/2 border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="col-span-full md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Page Count</label>
+                        <div class="flex space-x-4">
+                            <input name="pages_min" type="number" placeholder="Min Pages" min="1"
+                                   class="w-1/2 border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input name="pages_max" type="number" placeholder="Max Pages" min="1"
+                                   class="w-1/2 border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+
+                    <div class="col-span-full">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Publication Date Range</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <input name="date_min" type="date"
+                                   class="border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                            <input name="date_max" type="date"
+                                   class="border border-gray-300 rounded-lg shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3 border-t pt-4">
+                    <button type="reset"
+                            class="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition duration-150">
+                        Reset Filters
+                    </button>
+                    <button type="submit"
+                            class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition duration-150">
+                        Apply Filters
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+}

@@ -1,6 +1,7 @@
 package archive
 
 import (
+	"comics-galore-web/internal/config"
 	"fmt"
 	"github.com/gofiber/fiber/v3"
 	"io"
@@ -19,10 +20,10 @@ type Handler interface {
 	RegisterRoutes(app *fiber.App)
 }
 
-func NewHandler(svc Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, svc Service) Handler {
 	return &handler{
 		svc:    svc,
-		logger: logger.With("component", "archive_handler"),
+		logger: cfg.GetLogger().With("component", "archive_handler"),
 	}
 }
 

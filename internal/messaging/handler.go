@@ -1,6 +1,7 @@
 package messaging
 
 import (
+	"comics-galore-web/internal/config"
 	"log/slog"
 	"strconv"
 
@@ -23,10 +24,10 @@ type Handler interface {
 	StartDirectChat(c fiber.Ctx) error
 }
 
-func NewHandler(svc Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, svc Service) Handler {
 	return &handler{
 		svc:    svc,
-		logger: logger.With("component", "messaging_handler"),
+		logger: cfg.GetLogger().With("component", "messaging_handler"),
 	}
 }
 

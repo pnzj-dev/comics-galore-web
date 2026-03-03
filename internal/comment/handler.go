@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"comics-galore-web/internal/config"
 	"log/slog"
 
 	"github.com/gofiber/fiber/v3"
@@ -20,10 +21,10 @@ type Handler interface {
 	Delete(c fiber.Ctx) error
 }
 
-func NewHandler(svc Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, svc Service) Handler {
 	return &handler{
 		svc:    svc,
-		logger: logger.With("component", "comment_handler"),
+		logger: cfg.GetLogger().With("component", "comment_handler"),
 	}
 }
 
@@ -91,7 +92,7 @@ func (h *handler) Create(c fiber.Ctx) error {
 }
 
 func (h *handler) Update(c fiber.Ctx) error {
-	commentID := c.Params("postId") // Adjusted from "id" to match Register path
+	commentID := c.Params("postId") // Adjusted from "id" to match RegisterRoutes path
 	l := h.logger.With("op", "Update", "comment_id", commentID)
 
 	l.Info("update request received (not implemented)")
@@ -99,7 +100,7 @@ func (h *handler) Update(c fiber.Ctx) error {
 }
 
 func (h *handler) Delete(c fiber.Ctx) error {
-	commentID := c.Params("postId") // Adjusted from "id" to match Register path
+	commentID := c.Params("postId") // Adjusted from "id" to match RegisterRoutes path
 	l := h.logger.With("op", "Delete", "comment_id", commentID)
 
 	l.Warn("delete request received (not implemented)")

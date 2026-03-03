@@ -2,7 +2,6 @@ package blog
 
 import (
 	"cmp"
-	"comics-galore-web/cmd/web/utils"
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
@@ -15,6 +14,10 @@ type Image struct {
 	DisplayOrder int      `json:"display_order"`
 	BackupS3Key  string   `json:"backup_s3_key"`
 	Variants     []string `json:"variants"`
+}
+
+func (i Image) GetURL() string {
+	return fmt.Sprintf("https://imagedelivery.net/%s/cover", i.CloudflareID)
 }
 
 type PreviewList []Image
@@ -95,7 +98,7 @@ func (a *Location) DownloadUrl() string {
 }
 
 func (p *Post) Slug() string {
-	return utils.GenerateSlug(p.Title)
+	return GenerateSlug(p.Title)
 }
 
 func (p *Post) Url() string {
@@ -107,15 +110,15 @@ func (p *Post) TotalViewCount() string {
 }
 
 func (p *Post) FormatFileSize() string {
-	return utils.FormatSize(p.SizeBytes)
+	return FormatSize(p.SizeBytes)
 }
 
 func (p *Post) FormatCreatedAt() string {
-	return utils.FormatDateTime(p.CreatedAt)
+	return FormatDateTime(p.CreatedAt)
 }
 
 func (p *Post) FormatUpdatedAt() string {
-	return utils.FormatDateTime(p.UpdatedAt)
+	return FormatDateTime(p.UpdatedAt)
 }
 
 func (p *Post) FormatRating() string { return fmt.Sprintf("%.1f", p.Rating) }
@@ -132,11 +135,6 @@ func (p *Post) StarClass(index int) string {
 	return base + "text-gray-300"
 }
 
-/*func (p *Post) SortPreviews() {
-	if p == nil || len(p.Previews) < 2 {
-		return
-	}
-	slices.SortFunc(p.Previews, func(a, b Image) int {
-		return cmp.Compare(a.DisplayOrder, b.DisplayOrder)
-	})
-}*/
+func (p *Post) IsUpdatedAtOlderThanHours(hours int) bool {
+	return IsOlderThanHours(p.UpdatedAt, hours)
+}

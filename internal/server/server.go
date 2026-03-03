@@ -7,24 +7,20 @@ import (
 	"comics-galore-web/internal/cloudflare"
 	"comics-galore-web/internal/comment"
 	"comics-galore-web/internal/config"
-	"comics-galore-web/internal/database"
 	"comics-galore-web/internal/email"
 	"comics-galore-web/internal/messaging"
 	"comics-galore-web/internal/nowpayments"
 	"comics-galore-web/internal/picture"
 	"comics-galore-web/internal/qrcode"
+	"fmt"
 	"github.com/gofiber/fiber/v3"
-	"log/slog"
 )
 
 type Deps struct {
-	Logger *slog.Logger
-	DB     database.Resources
-
 	Blog        blog.Service
 	Email       email.Service
-	QrCode      qrcode.Service
 	Config      config.Service
+	QrCode      qrcode.Service
 	Archive     archive.Service
 	Picture     picture.Service
 	Comment     comment.Service
@@ -36,42 +32,25 @@ type Deps struct {
 
 type FiberServer struct {
 	*fiber.App
-	logger *slog.Logger
-	db     database.Resources
-
-	blog        blog.Service
-	email       email.Service
-	qrcode      qrcode.Service
-	config      config.Service
-	archive     archive.Service
-	picture     picture.Service
-	comment     comment.Service
-	messaging   messaging.Service
-	cloudflare  cloudflare.Images
-	nowpayments nowpayments.Service
-	broadcaster broadcaster.Service
 }
 
-func (d *Deps) New() *FiberServer {
-	server := &FiberServer{
-		App: fiber.New(fiber.Config{
-			ServerHeader: "comics-galore-web",
-			AppName:      "comics-galore-web",
-		}),
-		logger:      d.Logger.With("component", "fiber_server"),
-		db:          d.DB,
-		blog:        d.Blog,
-		email:       d.Email,
-		config:      d.Config,
-		qrcode:      d.QrCode,
-		archive:     d.Archive,
-		picture:     d.Picture,
-		comment:     d.Comment,
-		messaging:   d.Messaging,
-		broadcaster: d.Broadcaster,
-		nowpayments: d.Nowpayments,
-		cloudflare:  d.Cloudflare,
-	}
+func New(d *Deps) *FiberServer {
+	// 1. Get config once to avoid repeated map/struct lookups
+	cfg := d.Config.Get()
 
-	return server
+	// 2. Prepare metadata strings
+	appName := fmt.Sprintf("comics-galore-web (%s)", cfg.AppEnv)
+	serverHeader := fmt.Sprintf("comics-galore-web/%s", cfg.Version)
+
+	// 3. Initialize Fiber with optimized defaults
+	app := fiber.New(fiber.Config{
+		AppName:      appName,
+		ServerHeader: serverHeader,
+		// Optional: Good practice to include strict routing or custom error handlers here
+		StrictRouting: true,
+	})
+
+	return &FiberServer{
+		App: app,
+	}
 }

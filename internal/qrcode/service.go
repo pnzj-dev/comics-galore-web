@@ -2,6 +2,7 @@ package qrcode
 
 import (
 	"bytes"
+	"comics-galore-web/internal/config"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -30,10 +31,10 @@ type service struct {
 	logger    *slog.Logger
 }
 
-func NewService(logger *slog.Logger) Service {
+func NewService(cfg config.Service) Service {
 	return &service{
 		ibanRegex: regexp.MustCompile(`^[A-Z]{2}[0-9]{2}[A-Z0-9]{4,30}$`),
-		logger:    logger.With("component", "qrcode_service"),
+		logger:    cfg.GetLogger().With("component", "qrcode_service"),
 	}
 }
 

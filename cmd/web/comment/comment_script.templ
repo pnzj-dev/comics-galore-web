@@ -1,0 +1,97 @@
+package comment
+
+var commentHandle = templ.NewOnceHandle()
+
+templ CommentScript() {
+@commentHandle.Once() {
+<script>
+    function commentData(postId, userId, username, avatarId) {
+        return {
+            comments: [],
+            newComment: {content: ''},
+            replyForms: {},
+            eventSource: null,
+
+            init() {
+                this.refreshComments().then(() => {
+                    this.connectSSE();
+                });
+            },
+
+            connectSSE() {
+                this.eventSource = new EventSource(`/api/v1/events/comment/${postId}`);
+                this.eventSource.addEventListener('comment', (event) => {
+                    const newComment = JSON.parse(event.data);
+                    this.addCommentToTree(newComment);
+                });
+            },
+
+            async refreshComments() {
+                const res = await fetch(`/api/v1/comment/list/${postId}`);
+                if (res.ok) {
+                    this.comments = await res.json();
+                }
+            },
+
+            async addComment(parentId) {
+                const data = parentId ? this.replyForms[parentId] : this.newComment;
+                const req = {
+                    postId: postId,
+                    userId: userId,
+                    parentId: parentId,
+                    username: username,
+                    avatarId: avatarId,
+                    content: data.content
+                };
+
+                const res = await fetch(`/api/v1/comment/${postId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(req)
+                });
+
+                if (res.ok) {
+                    if (parentId) {
+                        delete this.replyForms[parentId];
+                    } else {
+                        this.newComment.content = '';
+                    }
+                }
+            },
+
+            toggleReply(id) {
+                if (this.replyForms[id]) {
+                    delete this.replyForms[id];
+                } else {
+                    this.replyForms[id] = {content: ''};
+                }
+            },
+
+            avatarUrl(id) {
+                return id != null && id !== "" ? `${id}` : '/assets/images/default-avatar-1.svg'
+            },
+
+            addCommentToTree(newComment) {
+                if (!newComment.parentId) {
+                    this.comments.unshift(newComment);
+                    return;
+                }
+
+                const findAndAdd = (list) => {
+                    for (let c of list) {
+                        if (c.id === newComment.parentId) {
+                            if (!c.replies) c.replies = [];
+                            c.replies.push(newComment);
+                            return true;
+                        }
+                        if (c.replies && findAndAdd(c.replies)) return true;
+                    }
+                    return false;
+                };
+                findAndAdd(this.comments);
+            }
+        }
+    }
+</script>
+}
+}

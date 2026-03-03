@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Service interface {
@@ -27,12 +26,12 @@ type service struct {
 	broadcaster broadcaster.Service
 }
 
-func NewService(cfg config.Service, pool *pgxpool.Pool, broadcaster broadcaster.Service, logger *slog.Logger) Service {
+func NewService(cfg config.Service, broadcaster broadcaster.Service) Service {
 	return &service{
 		cfg:         cfg,
-		querier:     database.New(pool),
+		querier:     cfg.GetQuerier(),
 		broadcaster: broadcaster,
-		logger:      logger.With("service", "comment"),
+		logger:      cfg.GetLogger().With("service", "comment"),
 	}
 }
 

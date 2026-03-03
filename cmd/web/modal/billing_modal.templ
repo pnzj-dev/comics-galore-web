@@ -1,0 +1,154 @@
+package modal
+
+
+templ BillingModal(isOpenState string, closeAction string) {
+	@Modal(
+		"billing-modal",
+		"Billing",
+		isOpenState,
+		closeAction,
+		billingModalContent(),
+		WithWidth("sm:w-full"),
+		WithMaxWidth("sm:max-w-5xl"),
+		WithMaxHeight("max-h-[98vh]"),
+		WithMinHeight("min-h-[66vh]"),
+	)
+}
+
+templ billingModalContent() {
+	<div x-data="billingModal()" x-init="" class="flex flex-col overflow-hidden bg-white w-full max-w-4xl lg:max-w-6xl">
+		// Header displaying total count and status
+		<div class="border-b border-neutral-200/70 flex justify-between items-center">
+			<div>
+				<h2 class="text-xl font-semibold text-neutral-800">Payment Transactions</h2>
+				<p class="text-sm text-neutral-500">Total Records: <span x-text="total"></span></p>
+			</div>
+			<button @click="" :disabled="isLoading" class="text-sm text-indigo-600 hover:text-indigo-800 disabled:text-neutral-400 disabled:cursor-not-allowed transition-colors">
+				<span x-show="!isLoading">Refresh</span>
+				<span x-show="isLoading" class="inline-flex items-center">
+					<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					Loading...
+				</span>
+			</button>
+		</div>
+		<div x-show="fetchError" class="p-6 bg-red-100 text-red-700 text-sm font-medium">
+			Error fetching data: <span x-text="fetchError"></span>
+		</div>
+		<div class="overflow-x-auto max-h-96 overflow-y-auto">
+			<div class="inline-block min-w-full">
+				<div class="overflow-hidden">
+					<table class="min-w-full divide-y divide-neutral-200/70">
+						<thead>
+							<tr class="bg-neutral-100 text-neutral-800">
+								<th class="px-5 py-3 text-xs font-medium text-left uppercase">Payment ID</th>
+								<th class="px-5 py-3 text-xs font-medium text-left uppercase">Order</th>
+								<th class="px-5 py-3 text-xs font-medium text-left uppercase">Amount</th>
+								<th class="px-5 py-3 text-xs font-medium text-left uppercase">Status</th>
+								<th class="px-5 py-3 text-xs font-medium text-left uppercase">Created At</th>
+								<th class="px-5 py-3 text-xs font-medium text-right uppercase">Action</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-neutral-200/70">
+							// Loading State
+							<template x-if="isLoading && !fetchError">
+								<tr class="text-neutral-600">
+									<td colspan="6" class="px-5 py-6 text-sm text-center animate-pulse">Loading payment records...</td>
+								</tr>
+							</template>
+							// No Data State
+							<template x-if="!isLoading && total === 0 && !fetchError">
+								<tr class="text-neutral-600">
+									<td colspan="6" class="px-5 py-6 text-sm text-center">No payment records found.</td>
+								</tr>
+							</template>
+							// Data Rows
+							<template x-for="(payment, index) in payments" :key="payment.ID">
+								<tr :class="index % 2 === 0 ? 'bg-neutral-50 text-neutral-800' : 'text-neutral-800'">
+									// Payment ID
+									<td class="px-5 py-4 text-sm font-medium whitespace-nowrap" x-text="payment.ID"></td>
+									// Order ID
+									<td class="px-5 py-4 text-sm whitespace-nowrap">
+										// Note: template.URL is used here for safety but must be adapted for Alpine's dynamic href binding
+										<a :href="'/orders/' + payment.OrderID" class="text-indigo-600 hover:text-indigo-800 underline" x-text="payment.OrderID"></a>
+									</td>
+									// Amount (Formatted)
+									<td class="px-5 py-4 text-sm whitespace-nowrap" x-text="formatCurrency(payment.PayAmount, payment.PayCurrency)"></td>
+									// Status (With Badge Styling)
+									<td class="px-5 py-4 text-sm whitespace-nowrap">
+										<span
+											class="px-2.5 py-0.5 text-xs font-semibold rounded-full"
+											:class="getBadgeClasses(payment.PaymentStatus)"
+											x-text="payment.PaymentStatus.toUpperCase()"
+										></span>
+									</td>
+									// Created At (Formatted)
+									<td class="px-5 py-4 text-sm whitespace-nowrap text-neutral-500" x-text="formatDate(payment.CreatedAt)"></td>
+									// Action (View QR Code or Details)
+									<td class="px-5 py-4 text-sm font-medium text-right whitespace-nowrap">
+										<a class="text-blue-600 hover:text-blue-700 underline" :href="payment.QrCodeURL">View QR</a>
+									</td>
+								</tr>
+							</template>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+	<script>
+	  function billingModal() {
+			return {
+  			apiUrl: '/billing/payments',
+  			payments: [],
+  			isLoading: true,
+  			total: 0,
+  			fetchError: null,
+
+  			async fetchPayments() {
+  				this.isLoading = true;
+  				this.fetchError = null;
+  				try {
+  					const response = await fetch(this.apiUrl);
+  					if (!response.ok) throw new Error('Failed to fetch payments: ' + response.statusText);
+  					const data = await response.json();
+  					this.payments = data.payments || [];
+  					this.total = data.total || 0;
+  				} catch (e) {
+  					this.fetchError = e.message;
+  				} finally {
+  					this.isLoading = false;
+  				}
+  			},
+
+  			getBadgeClasses(status) {
+  				status = status.toUpperCase();
+  				let color = 'gray';
+  				if (status === 'COMPLETED') color = 'green';
+  				else if (status === 'PENDING') color = 'yellow';
+  				else if (status === 'FAILED' || status === 'CANCELED') color = 'red';
+
+  				switch (color) {
+  					case 'green': return 'bg-green-100 text-green-800';
+  					case 'yellow': return 'bg-yellow-100 text-yellow-800';
+  					case 'red': return 'bg-red-100 text-red-800';
+  					default: return 'bg-gray-100 text-gray-800';
+  				}
+  			},
+
+  			formatDate(dateString) {
+  				if (!dateString) return 'N/A';
+  				// Using new Date() in JS for accurate client-side formatting
+  				const date = new Date(dateString);
+  				return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  			},
+
+  			formatCurrency(amount, currency) {
+  				return amount.toFixed(2) + ' ' + currency;
+  			}
+  		}
+		}
+	</script>
+}

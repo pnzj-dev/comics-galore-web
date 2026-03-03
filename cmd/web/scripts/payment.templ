@@ -1,0 +1,89 @@
+package scripts
+
+var paymentHandle = templ.NewOnceHandle()
+
+templ PaymentScript() {
+@paymentHandle.Once(){
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('multiStepForm', () => ({
+            currentStep: 1,
+            submitted: false,
+            form: {
+                name: '',
+                email: '',
+                title: '',
+                budget: '',
+                confirm: false,
+            },
+            errors: {},
+
+            get progressWidth() {
+                // Calculates the width for the progress bar (33.33%, 66.66%, 100%)
+                return (this.currentStep / 3) * 100;
+            },
+
+            // --- Validation Logic ---
+            validateStep(step) {
+                this.errors = {}; // Clear errors
+                let isValid = true;
+
+                if (step === 1) {
+                    if (this.form.name.trim() === '') {
+                        this.errors.name = 'Full name is required.';
+                        isValid = false;
+                    }
+                    if (this.form.email.trim() === '' || !this.form.email.includes('@')) {
+                        this.errors.email = 'A valid email is required.';
+                        isValid = false;
+                    }
+                } else if (step === 2) {
+                    if (this.form.title.trim() === '') {
+                        this.errors.title = 'Project title is required.';
+                        isValid = false;
+                    }
+                    if (this.form.budget === '' || isNaN(parseInt(this.form.budget)) || parseInt(this.form.budget) <= 0) {
+                        this.errors.budget = 'A valid budget is required.';
+                        isValid = false;
+                    }
+                } else if (step === 3) {
+                    if (!this.form.confirm) {
+                        this.errors.confirm = 'You must confirm the details.';
+                        isValid = false;
+                    }
+                }
+                return isValid;
+            },
+
+            // --- Navigation Methods ---
+            nextStep() {
+                if (this.validateStep(this.currentStep)) {
+                    this.currentStep++;
+                }
+            },
+
+            prevStep() {
+                if (this.currentStep > 1) {
+                    this.currentStep--;
+                }
+            },
+
+            // --- Submission Method ---
+            submitForm() {
+                if (this.validateStep(3)) {
+                    // In a real application, you would send this.form data to your server via fetch()
+                    console.log('Form Submitted:', this.form);
+                    this.submitted = true;
+
+                    // Optionally reset the form or redirect after a delay
+                    setTimeout(() => {
+                        // this.currentStep = 1;
+                        // this.form = { name: '', email: '', title: '', budget: '', confirm: false };
+                    }, 5000);
+                }
+            }
+        }))
+    })
+</script>
+}
+}

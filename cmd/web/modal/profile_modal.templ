@@ -1,0 +1,256 @@
+package modal
+
+import "comics-galore-web/internal/auth"
+import "comics-galore-web/internal/view"
+
+
+templ ProfileModal(isOpenState string, closeAction string, user *auth.Claims) {
+@Modal("profile-modal","Profile",isOpenState,closeAction,profileModalContent(user,&view.UserProfile{},""),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
+}
+
+templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstileKey string) {
+<div x-data="profileModal()">
+    <div class="border-b border-gray-200 dark:border-gray-700">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'profile'"
+                    :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'profile', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'profile' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Profile
+            </button>
+            <button @click="activeTab = 'security'"
+                    :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'security', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'security' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Security
+            </button>
+            <button @click="activeTab = 'stats'"
+                    :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'stats', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'stats' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Statistics
+            </button>
+        </nav>
+    </div>
+    <template x-if="successMessage">
+        <div class="mt-4 p-4 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/50 dark:text-green-300"
+             role="alert" x-text="successMessage"></div>
+    </template>
+    <template x-if="errorMessage">
+        <div class="mt-4 p-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-300"
+             role="alert" x-text="errorMessage"></div>
+    </template>
+    <div class="pt-6">
+        <div x-show="activeTab === 'profile'" x-cloak class="space-y-8">
+            <div>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Avatar</h4>
+                <div class="flex items-center space-x-6">
+                    <img :src="avatarPreviewUrl" alt="Avatar" class="h-24 w-24 rounded-full object-cover"
+                         onerror="this.onerror=null;this.src='/assets/images/default-avatar-1.svg';"/>
+                    <div>
+                        <input type="file" class="sr-only" x-ref="avatarInput" @change="handleAvatarChange"
+                               accept="image/png, image/jpeg"/>
+                        <button @click="$refs.avatarInput.click()" type="button"
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600 dark:hover:bg-gray-600">
+                            Change
+                        </button>
+                        <p class="text-xs text-gray-500 mt-1">PNG or JPG, up to 2MB.</p>
+                    </div>
+                </div>
+                <template x-if="avatarUploadProgress > 0 && avatarUploadProgress < 100">
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-4">
+                        <div class="bg-indigo-600 h-2.5 rounded-full"
+                             :style="{width: avatarUploadProgress + '%'}"></div>
+                    </div>
+                </template>
+            </div>
+            <div>
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Display Name</h4>
+                <form @submit.prevent="updateName">
+                    <div class="flex items-center space-x-4">
+                        <input type="text" x-model="name"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"/>
+                        <button type="submit" :disabled="isSavingName"
+                                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50">
+                            <span x-show="!isSavingName">Save</span>
+                            <span x-show="isSavingName">Saving...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div x-show="activeTab === 'security'" x-cloak class="space-y-6">
+            <h4 class="text-lg font-medium text-gray-900 dark:text-white">Change Password</h4>
+            <form @submit.prevent="changePassword($el)">
+                <div class="space-y-4">
+                    <input type="password" x-model="passwords.current" placeholder="Current Password" required
+                           class="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                    <input type="password" x-model="passwords.new" placeholder="New Password" required
+                           class="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                    <input type="password" x-model="passwords.confirm" placeholder="Confirm New Password" required
+                           class="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm dark:bg-gray-800 dark:border-gray-600"/>
+                    <div class="cf-turnstile" :data-sitekey="turnstileKey"
+                         data-callback="onPasswordTurnstileSuccess"></div>
+                    <div class="flex justify-end">
+                        <button type="submit" :disabled="isChangingPassword || !passwordTurnstileToken"
+                                class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 disabled:opacity-50">
+                            <span x-show="!isChangingPassword">Change Password</span>
+                            <span x-show="isChangingPassword">Saving...</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div x-show="activeTab === 'stats'" x-cloak>
+            <h4 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Your Statistics</h4>
+            <dl class="grid grid-cols-2 gap-x-4 gap-y-8">
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Files Uploaded</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 dark:text-white"
+                        x-text="stats.uploadedFilesCount"></dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Favorite Blogs</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 dark:text-white"
+                        x-text="stats.favoriteBlogsCount"></dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Likes Given</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 dark:text-white" x-text="stats.likesCount"></dd>
+                </div>
+                <div class="sm:col-span-1">
+                    <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Dislikes Given</dt>
+                    <dd class="mt-1 text-lg font-semibold text-gray-900 dark:text-white"
+                        x-text="stats.dislikesCount"></dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+</div>
+<script>
+    function onPasswordTurnstileSuccess(token) {
+        const el = document.querySelector('[x-data^="profileModal"]');
+        if (el) {
+            el.__x.$data.passwordTurnstileToken = token;
+        }
+    }
+
+    function profileModal() {
+        return {
+            activeTab: 'profile',
+            name: {{ user.Name }},
+            passwords: {current: '', new: '', confirm: ''},
+            stats: {
+                uploadedFilesCount: {{ profile.UploadedFilesCount }},
+                favoriteBlogsCount: {{ profile.FavoriteBlogsCount }},
+                likesCount: {{ profile.LikesCount }},
+                dislikesCount: {{ profile.DislikesCount }},
+            },
+            //TODO : complete
+            avatarPreviewUrl: {{ user.AvatarUrl() }},
+            avatarUploadProgress: 0,
+            isSavingName: false,
+            isChangingPassword: false,
+            turnstileKey: {{ turnstileKey }},
+            passwordTurnstileToken: null,
+            successMessage: '',
+            errorMessage: '',
+
+            handleAvatarChange(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (file.size > 2 * 1024 * 1024) {
+                    this.setErrorMessage('Image must be smaller than 2MB.');
+                    return;
+                }
+                if (!['image/png', 'image/jpeg'].includes(file.type)) {
+                    this.setErrorMessage('You can only upload JPG/PNG file.');
+                    return;
+                }
+
+                this.avatarPreviewUrl = URL.createObjectURL(file);
+                this.uploadAvatar(file);
+            },
+
+            async uploadAvatar(file) {
+                const formData = new FormData();
+                formData.append('avatar', file);
+
+                try {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/v1/users/avatar', true);
+                    // Add JWT header if needed: xhr.setRequestHeader('Authorization', 'Bearer ' + your_jwt);
+
+                    xhr.upload.onprogress = (event) => {
+                        if (event.lengthComputable) {
+                            this.avatarUploadProgress = (event.loaded / event.total) * 100;
+                        }
+                    };
+
+                    xhr.onload = () => {
+                        this.avatarUploadProgress = 0;
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            const response = JSON.parse(xhr.responseText);
+                            this.avatarPreviewUrl = response.data.avatarUrl; // Assuming API returns new URL
+                            this.setSuccessMessage('Avatar updated successfully.');
+                        } else {
+                            const errorData = JSON.parse(xhr.responseText);
+                            this.setErrorMessage(errorData.message || 'Failed to upload avatar.');
+                            URL.revokeObjectURL(this.avatarPreviewUrl); // Revert preview
+                        }
+                    };
+                    xhr.send(formData);
+                } catch (error) {
+                    this.setErrorMessage('An error occurred during upload.');
+                }
+            },
+
+            async updateName() {
+                this.isSavingName = true;
+                await this.submitForm('/api/v1/users/profile', {name: this.name}, 'isSavingName', 'Name updated successfully.');
+            },
+
+            async changePassword(form) {
+                if (this.passwords.new !== this.passwords.confirm) {
+                    this.setErrorMessage('New passwords do not match.');
+                    return;
+                }
+                this.isChangingPassword = true;
+                const payload = {...this.passwords, 'cf-turnstile-response': this.passwordTurnstileToken};
+                await this.submitForm('/api/v1/users/password', payload, 'isChangingPassword', 'Password changed successfully.');
+                this.passwords = {current: '', new: '', confirm: ''};
+                if (window.turnstile) window.turnstile.reset(form.querySelector('.cf-turnstile'));
+                this.passwordTurnstileToken = null;
+            },
+
+            async submitForm(endpoint, payload, savingFlag, successMsg) {
+                this.clearMessages();
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'PATCH',
+                        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'An unknown error occurred.');
+                    }
+                    this.setSuccessMessage(successMsg);
+                } catch (error) {
+                    this.setErrorMessage(error.message);
+                } finally {
+                    this[savingFlag] = false;
+                }
+            },
+
+            setSuccessMessage(msg) {
+                this.successMessage = msg;
+                setTimeout(() => this.successMessage = '', 3000);
+            },
+            setErrorMessage(msg) {
+                this.errorMessage = msg;
+                setTimeout(() => this.errorMessage = '', 5000);
+            },
+            clearMessages() {
+                this.successMessage = '';
+                this.errorMessage = '';
+            }
+        }
+    }
+</script>
+}

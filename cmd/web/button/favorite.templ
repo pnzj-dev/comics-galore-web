@@ -1,0 +1,34 @@
+package button
+
+import "comics-galore-web/internal/blog"
+
+
+templ FavoriteButton(post *blog.Post, isFavorite bool) {
+<button type="button"
+        x-data={FavoriteButtonXData(post.ID,isFavorite)}
+        @click.prevent="
+            isLoading = true;
+            // Simulate API call
+            setTimeout(() => {
+                isFavorite = !isFavorite;
+                isLoading = false;
+                console.log('Post ' + id + ' favorite status set to: ' + isFavorite);
+            }, 300);
+        "
+        class="p-2 rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50 bg-white bg-opacity-80 border-2"
+        :class="isFavorite ? 'border-red-500' : 'border-neutral-500'" :disabled="isLoading">
+    <svg x-show="isLoading" class="animate-spin h-4 w-4 text-red-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+         viewBox="0 0 24 24" x-cloak>
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </svg>
+    <svg x-cloak stroke-width="2" viewBox="0 0 24 24" x-show="!isLoading" stroke-linecap="round" stroke-linejoin="round"
+         class="transition-all duration-300 transform hover:scale-110 w-4 h-4  bg-white bg-opacity-80 rounded-full"
+         :class="isFavorite ? `fill-red-500 stroke-red-500` : `fill-none stroke-neutral-500 hover:stroke-red-500 hover:fill-red-100` "
+         xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+    </svg>
+    <span class="sr-only" x-text="isFavorite ? 'Remove from favorites' : 'Add to favorites'"></span>
+</button>
+}

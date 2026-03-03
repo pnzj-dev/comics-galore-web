@@ -25,10 +25,10 @@ type service struct {
 	httpClient *http.Client // Shared transport for efficiency
 }
 
-func NewService(cfg config.Service, logger *slog.Logger) Service {
+func NewService(cfg config.Service) Service {
 	return &service{
 		cfg:    cfg,
-		logger: logger.With("component", "nowpayments_service"),
+		logger: cfg.GetLogger().With("component", "nowpayments_service"),
 		// Standard library transport is thread-safe and reusable
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,

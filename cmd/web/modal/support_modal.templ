@@ -1,0 +1,97 @@
+package modal
+
+import "comics-galore-web/internal/view"
+
+
+templ SupportModal(isOpenState string, closeAction string) {
+@Modal("support-modal","Support",isOpenState,closeAction,supportModalContent("", []view.SupportMessage{}),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
+}
+
+templ supportModalContent(turnstileKey string, recentMessages []view.SupportMessage) {
+<div x-data="supportModal()">
+    <div class="border-b border-gray-200 dark:border-gray-700">
+        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+            <button @click="activeTab = 'send'"
+                    :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'send', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'send' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Send a Message
+            </button>
+            <button @click="activeTab = 'recent'"
+                    :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'recent', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'recent' }"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                Recent Messages
+            </button>
+        </nav>
+    </div>
+
+    <div class="pt-6">
+        <div x-show="activeTab === 'send'" x-cloak>
+            <form @submit.prevent="submitMessage($el)">
+                <div class="space-y-4">
+                    <div>
+                        <label for="support-subject" class="sr-only">Subject</label>
+                        <input id="support-subject" required placeholder="Subject" x-model="messageSubject"
+                               class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white mb-4"
+                        />
+                        <label for="support-message" class="sr-only">Your message</label>
+                        <textarea rows="5" id="support-message" x-model="messageContent"
+                                  class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                                  placeholder="Type your message to the support team here..."
+                                  required
+                        ></textarea>
+                    </div>
+
+                    <div class="cf-turnstile" data-sitekey={turnstileKey} data-callback="onTurnstileSuccess"></div>
+
+                    <template x-if="formError">
+                        <div class="p-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-300"
+                             role="alert">
+                            <span x-text="formError"></span>
+                        </div>
+                    </template>
+                    <template x-if="formSuccess">
+                        <div class="p-4 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/50 dark:text-green-300"
+                             role="alert">
+                            <span>Your message has been sent successfully!</span>
+                        </div>
+                    </template>
+
+                    <div class="flex justify-end">
+                        <button type="submit" :disabled="isSubmitting || !turnstileToken"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="isSubmitting">Sending...</span>
+                            <span x-show="!isSubmitting">Send Message</span>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div x-show="activeTab === 'recent'" x-cloak>
+            <div class="space-y-6 max-h-[50vh] overflow-y-auto pr-4">
+                if len(recentMessages) == 0 {
+                <p class="text-center text-gray-500 dark:text-gray-400">You have no recent messages.</p>
+                } else {
+                for _, msg := range recentMessages {
+
+                <div class={"flex",templ.KV("justify-end",msg.IsFromUser),templ.KV("justify-start",!msg.IsFromUser)}>
+                    <div class={
+                    "max-w-lg px-4 py-3 rounded-lg", templ.KV("bg-indigo-500 text-white", msg.IsFromUser),
+                    templ.KV("bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200", !msg.IsFromUser) }>
+                    <p class="text-sm" style="white-space: pre-wrap;">{ msg.Content }</p>
+                    <p class="text-xs opacity-75 mt-2 text-right">{ FormatTimeAgo(msg.SentAt) }</p>
+                </div>
+            </div>
+            }
+            }
+            <div class="text-center pt-4">
+                <a href="/support/history"
+                   class="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                    Show older messages
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+}

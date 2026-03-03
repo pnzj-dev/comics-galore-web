@@ -1,13 +1,13 @@
 package messaging
 
 import (
+	"comics-galore-web/internal/config"
 	"comics-galore-web/internal/database"
 	"context"
 	"fmt"
 	"log/slog"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type service struct {
@@ -26,10 +26,10 @@ type Service interface {
 	GetOrCreateDirectConversation(ctx context.Context, userID1, userID2 string) (int64, error)
 }
 
-func NewService(pool *pgxpool.Pool, logger *slog.Logger) Service {
+func NewService(cfg config.Service) Service {
 	return &service{
-		querier: database.New(pool),
-		logger:  logger.With("component", "messaging_service"),
+		querier: cfg.GetQuerier(),
+		logger:  cfg.GetLogger().With("component", "messaging_service"),
 	}
 }
 

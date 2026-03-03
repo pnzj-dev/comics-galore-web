@@ -1,0 +1,129 @@
+package payment
+
+import "fmt"
+import "comics-galore-web/cmd/web/helper"
+
+templ Payment() {
+{{ uid := helper.RandomID() }}
+<div x-data="multiStepForm()" id={fmt.Sprintf("wizard-%s",uid)}
+     class="w-full max-w-2xl bg-white shadow-2xl rounded-xl p-8 transition-all duration-300">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Project Setup Wizard</h1>
+
+    <div class="mb-8">
+        <div class="flex justify-between items-center mb-2">
+            <span :class="{'font-semibold text-indigo-600': currentStep === 1, 'text-gray-500': currentStep !== 1}">Step 1: Contact</span>
+            <span :class="{'font-semibold text-indigo-600': currentStep === 2, 'text-gray-500': currentStep !== 2}">Step 2: Details</span>
+            <span :class="{'font-semibold text-indigo-600': currentStep === 3, 'text-gray-500': currentStep !== 3}">Step 3: Review</span>
+        </div>
+        <div class="h-2 bg-gray-200 rounded-full">
+            <div class="h-full bg-indigo-500 rounded-full transition-all duration-500 ease-out"
+                 :style="`width: ${progressWidth}%`">
+            </div>
+        </div>
+    </div>
+
+    <form @submit.prevent="submitForm">
+        <div x-show="currentStep === 1" x-cloak x-transition.opacity>
+            <h2 class="text-2xl font-semibold text-indigo-600 mb-4">1. Your Contact Information</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for={fmt.Sprintf("name-%s",uid)} class="block text-sm font-medium text-gray-700 mb-1">
+                        Full Name
+                    </label>
+                    <input type="text" x-model="form.name" id={fmt.Sprintf("name-%s",uid)}
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                           placeholder="John Doe"/>
+                    <template x-if="errors.name">
+                        <p class="text-sm text-red-500 mt-1" x-text="errors.name"></p>
+                    </template>
+                </div>
+                <div>
+                    <label for={fmt.Sprintf("email-%s",uid)} class="block text-sm font-medium text-gray-700 mb-1">Email
+                        Address</label>
+                    <input type="email" x-model="form.email" id={fmt.Sprintf("email-%s",uid)}
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                           placeholder="john.doe@example.com"/>
+                    <template x-if="errors.email">
+                        <p class="text-sm text-red-500 mt-1" x-text="errors.email"></p>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="currentStep === 2" x-cloak x-transition.opacity>
+            <h2 class="text-2xl font-semibold text-indigo-600 mb-4">2. Project Details</h2>
+            <div class="space-y-4">
+                <div>
+                    <label for={fmt.Sprintf("title-%s",uid)} class="block text-sm font-medium text-gray-700 mb-1">
+                        Project Title
+                    </label>
+                    <input type="text" x-model="form.title" id={fmt.Sprintf("title-%s",uid)}
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 transition"
+                           placeholder="E-commerce Platform"/>
+                    <template x-if="errors.title">
+                        <p class="text-sm text-red-500 mt-1" x-text="errors.title"></p>
+                    </template>
+                </div>
+                <div>
+                    <label for={fmt.Sprintf("budget-%s",uid)} class="block text-sm font-medium text-gray-700 mb-1">
+                        Estimated Budget (USD)
+                    </label>
+                    <input type="number" x-model="form.budget" id={fmt.Sprintf("budget-%s",uid)}
+                           class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500
+                    transition" placeholder="5000"/>
+                    <template x-if="errors.budget">
+                        <p class="text-sm text-red-500 mt-1" x-text="errors.budget"></p>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div x-show="currentStep === 3" x-cloak x-transition.opacity>
+            <h2 class="text-2xl font-semibold text-indigo-600 mb-4">3. Review and Confirmation</h2>
+            <div class="bg-gray-50 p-6 rounded-lg shadow-inner space-y-3">
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-3">Summary</h3>
+                <p class="text-gray-700"><span class="font-semibold">Name:</span> <span x-text="form.name"></span></p>
+                <p class="text-gray-700"><span class="font-semibold">Email:</span> <span x-text="form.email"></span></p>
+                <p class="text-gray-700"><span class="font-semibold">Project Title:</span> <span
+                            x-text="form.title"></span></p>
+                <p class="text-gray-700"><span class="font-semibold">Budget:</span> $<span x-text="form.budget"></span>
+                </p>
+                <div class="mt-4 pt-4 border-t">
+                    <input x-model="form.confirm" type="checkbox" id={fmt.Sprintf("confirm-%s",uid)}
+                           class="text-indigo-600 rounded focus:ring-indigo-500"/>
+                    <label for={fmt.Sprintf("confirm-%s",uid)} class="ml-2 text-sm font-medium text-gray-700">
+                        I confirm the details above are correct.
+                    </label>
+                    <template x-if="errors.confirm">
+                        <p class="text-sm text-red-500 mt-1" x-text="errors.confirm"></p>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8 flex justify-between">
+            <button type="button" @click="prevStep()" x-show="currentStep > 1"
+                    class="px-6 py-3 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-100 transition duration-150 shadow-sm">
+                &larr; Previous
+            </button>
+            <div :class="{'w-full': currentStep === 1}">
+                <button type="button" @click="nextStep()" x-show="currentStep < 3"
+                        class="float-right px-6 py-3 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 transition duration-150 shadow-md transform hover:scale-[1.02]">
+                    Next Step &rarr;
+                </button>
+                <button type="submit" x-show="currentStep === 3"
+                        class="float-right px-8 py-3 border border-transparent text-lg font-bold rounded-lg text-white bg-green-600 hover:bg-green-700 transition duration-150 shadow-lg transform hover:scale-[1.02]"
+                        :disabled="!form.confirm">
+                    Submit Project
+                </button>
+            </div>
+        </div>
+    </form>
+
+    <div x-show="submitted" x-cloak x-transition.opacity
+         class="mt-8 p-6 bg-green-50 border-l-4 border-green-400 text-green-700 rounded-lg">
+        <p class="font-bold">Success!</p>
+        <p>Your project details have been successfully submitted. We will be in touch soon.</p>
+    </div>
+</div>
+}

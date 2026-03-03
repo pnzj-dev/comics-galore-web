@@ -1,8 +1,8 @@
 package broadcaster
 
 import (
+	"comics-galore-web/internal/config"
 	"comics-galore-web/internal/database"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"sync"
 )
@@ -12,17 +12,17 @@ type Service interface {
 }
 
 type service struct {
-	querier      *database.Queries
 	broadcasters sync.Map
+	querier      *database.Queries
 	logger       *slog.Logger
 }
 
 // NewService initializes the broadcaster service with structured logging.
-func NewService(pool *pgxpool.Pool, logger *slog.Logger) Service {
+func NewService(cfg config.Service) Service {
 	return &service{
-		querier:      database.New(pool),
 		broadcasters: sync.Map{},
-		logger:       logger.With("service", "broadcaster"),
+		querier:      cfg.GetQuerier(),
+		logger:       cfg.GetLogger().With("service", "broadcaster"),
 	}
 }
 

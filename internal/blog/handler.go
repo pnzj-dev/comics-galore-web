@@ -1,6 +1,7 @@
 package blog
 
 import (
+	"comics-galore-web/internal/config"
 	"comics-galore-web/internal/database"
 	"log/slog"
 	"strconv"
@@ -24,7 +25,7 @@ type Handler interface {
 	RegisterRoutes(app *fiber.App)
 }
 
-func NewHandler(svc Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, svc Service) Handler {
 	// 1. Initialize rate limiter for views
 	viewLimiter := limiter.New(limiter.Config{
 		Max:        5,
@@ -41,7 +42,7 @@ func NewHandler(svc Service, logger *slog.Logger) Handler {
 
 	return &handler{
 		svc:             svc,
-		logger:          logger.With("component", "blog_handler"),
+		logger:          cfg.GetLogger().With("component", "blog_handler"),
 		viewRateLimiter: viewLimiter,
 	}
 }

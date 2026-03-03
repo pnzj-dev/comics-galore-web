@@ -2,8 +2,9 @@
 -- EXTENSIONS & CUSTOM TYPES
 -- =============================================================================
 CREATE EXTENSION IF NOT EXISTS "citext";
-
-CREATE TYPE user_role AS ENUM ('basic', 'premium', 'admin');
+CREATE EXTENSION IF NOT EXISTS "pg_uuidv7";
+CREATE TYPE user_role AS ENUM ('user', 'admin', 'writer' );
+CREATE TYPE membership_plan_type AS ENUM ('free', 'bronze', 'silver', 'gold', 'n/a');
 CREATE TYPE reaction_type AS ENUM ('like', 'dislike', 'love', 'laugh', 'angry');
 CREATE TYPE target_type_enum AS ENUM ('post', 'comment');
 
@@ -14,17 +15,17 @@ CREATE TYPE target_type_enum AS ENUM ('post', 'comment');
 CREATE TABLE users
 (
     id              VARCHAR(255) PRIMARY KEY, -- Length based on typical Auth provider IDs
-    name            VARCHAR(100)              NOT NULL,
-    email           CITEXT                    NOT NULL,
-    email_verified  BOOLEAN     DEFAULT false NOT NULL,
+    name            VARCHAR(100)                       NOT NULL,
+    email           CITEXT                             NOT NULL,
+    email_verified  BOOLEAN              DEFAULT false NOT NULL,
     image           TEXT,                     -- URLs kept as TEXT for length flexibility
-    role            user_role   DEFAULT 'basic',
-    membership_plan VARCHAR(50) DEFAULT 'free',
-    banned          BOOLEAN     DEFAULT false,
+    role            user_role            DEFAULT 'user',
+    membership_plan membership_plan_type DEFAULT 'free',
+    banned          BOOLEAN              DEFAULT false,
     ban_reason      VARCHAR(500),
     ban_expires     TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT now() NOT NULL,
-    updated_at      TIMESTAMPTZ DEFAULT now() NOT NULL,
+    created_at      TIMESTAMPTZ          DEFAULT now() NOT NULL,
+    updated_at      TIMESTAMPTZ          DEFAULT now() NOT NULL,
     CONSTRAINT user_email_unique UNIQUE (email)
 );
 

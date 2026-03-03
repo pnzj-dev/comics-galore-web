@@ -1,7 +1,6 @@
 package picture
 
 import (
-	"comics-galore-web/internal/config"
 	"comics-galore-web/internal/server"
 	"errors"
 	"gotest.tools/v3/assert"
@@ -21,11 +20,11 @@ func TestImageHandler_S3Error(t *testing.T) {
 
 	// 2. Inject the mock into your server deps
 	deps := server.Deps{
-		Config:  config.NewMockService(&config.Env{}),
+		//Config:  config.NewMockService(&config.Env{}),
 		Logger:  slog.Default(),
 		Picture: mockPic,
 	}
-	srv := deps.New()
+	srv := server.New(&deps)
 	srv.RegisterFiberRoutes()
 
 	// 3. Perform the request

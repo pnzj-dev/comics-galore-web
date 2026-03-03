@@ -1,0 +1,108 @@
+package modal
+
+import "fmt"
+import "comics-galore-web/internal/auth"
+
+templ SettingsModal(isOpenState string, closeAction string, user *auth.Claims) {
+@Modal("settings-modal","Settings",isOpenState,closeAction,settingsModalContent(user.NightMode),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
+}
+
+templ settingsModalContent(initialNightMode bool) {
+<div x-data="settingsModal()">
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">User Preferences</h3>
+    <div class="space-y-4">
+        <!-- Night Mode Toggle -->
+        <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm">
+            <div>
+                <label for="night-mode-toggle" class="text-base font-medium text-gray-900 dark:text-white">Night
+                    Mode</label>
+                <p class="text-sm text-gray-500 dark:text-gray-400">Toggle between light and dark themes.</p>
+            </div>
+            <button
+                    type="button"
+                    id="night-mode-toggle"
+                    @click="toggleNightMode()"
+                    :class="{ 'bg-indigo-600': nightModeEnabled, 'bg-gray-200': !nightModeEnabled }"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                    role="switch"
+                    aria-checked="false"
+                    x-bind:aria-checked="nightModeEnabled.toString()">
+                <span class="sr-only">Enable night mode</span>
+                <span
+                        aria-hidden="true"
+                        :class="{ 'translate-x-5': nightModeEnabled, 'translate-x-0': !nightModeEnabled }"
+                        class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                ></span>
+            </button>
+        </div>
+        <!-- Feedback Messages -->
+        <template x-if="saveError">
+            <div class="p-3 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-900/50 dark:text-red-300"
+                 role="alert">
+                <span x-text="saveError"></span>
+            </div>
+        </template>
+        <template x-if="saveSuccess">
+            <div class="p-3 text-sm text-green-700 bg-green-100 rounded-lg dark:bg-green-900/50 dark:text-green-300"
+                 role="alert">
+                <span>Preferences saved successfully!</span>
+            </div>
+        </template>
+    </div>
+</div>
+<script>
+    function settingsModal() {
+        return {
+            nightModeEnabled: {{ fmt.Sprintf("%t", initialNightMode) }},
+            isSaving: false,
+            saveError: '',
+            saveSuccess: false,
+
+            init() {
+                this.$watch('nightModeEnabled', (value) => {
+                    if (value) {
+                        document.documentElement.classList.add('dark');
+                        localStorage.setItem('theme', 'dark');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        localStorage.setItem('theme', 'light');
+                    }
+                });
+            },
+
+            async toggleNightMode() {
+                this.isSaving = true;
+                this.saveError = '';
+                this.saveSuccess = false;
+
+                const newNightModeState = !this.nightModeEnabled;
+
+                try {
+                    const response = await fetch('/api/v1/users/preferences', {
+                        method: 'PATCH', // Or PUT, depending on your API
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify({nightMode: newNightModeState})
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.message || 'Failed to save preferences.');
+                    }
+
+                    this.nightModeEnabled = newNightModeState;
+                    this.saveSuccess = true;
+                    setTimeout(() => this.saveSuccess = false, 3000); // Hide success message after 3 seconds
+
+                } catch (error) {
+                    this.saveError = error.message;
+                } finally {
+                    this.isSaving = false;
+                }
+            }
+        }
+    }
+</script>
+}

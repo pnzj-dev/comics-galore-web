@@ -1,265 +1,7 @@
 package auth
 
-
 templ AuthModal() {
-<script>
-    function authModal() {
-        return {
-            modalOpen: false,
-            currentView: 'login', // 'login', 'register', 'forgot'
-            isSubmitting: false,
-            errors: {},
-            message: null, // { type: 'success' | 'error', text: string }
-
-            loginForm: {
-                email: '',
-                password: ''
-            },
-            registerForm: {
-                name: '',
-                email: '',
-                password: '',
-                confirmPassword: ''
-            },
-            forgotForm: {
-                email: ''
-            },
-
-            init() {
-                // Watch for global language changes
-                this.$watch('$store.i18n.currentLang', () => {
-                    this.message = null;
-                    this.errors = {};
-                });
-            },
-
-            t(key) {
-                return Alpine.store('i18n') ? Alpine.store('i18n').t(key) : key;
-            },
-
-            // --- Validation Logic ---
-
-            isValidEmail(email) {
-                const re = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-                return re.test(String(email).toLowerCase());
-            },
-
-            isValidPassword(password) {
-                // 8 chars, 1 lower, 1 upper, 1 number, 1 special char
-                const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/i;
-                return re.test(String(password));
-            },
-
-            isValidUsername(username) {
-                const re = /^[a-zA-Z0-9_]{3,15}$/;
-                return re.test(String(username));
-            },
-
-            validateField(form, field) {
-                // Clear previous error for this field so we don't stack them or show stale ones
-                if (this.errors[field]) {
-                    delete this.errors[field];
-                }
-
-                let val = '';
-                if (form === 'login') val = this.loginForm[field];
-                else if (form === 'register') val = this.registerForm[field];
-                else if (form === 'forgot') val = this.forgotForm[field];
-
-                if (field === 'email') {
-                    if (!this.isValidEmail(val)) {
-                        this.errors.email = this.t('errEmailInvalid');
-                    }
-                } else if (field === 'password') {
-                    if (!this.isValidPassword(val)) {
-                        this.errors.password = this.t('errPasswordInvalid');
-                    }
-                } else if (field === 'name') {
-                    if (!this.isValidUsername(val)) {
-                        this.errors.name = this.t('errNameInvalid');
-                    }
-                } else if (field === 'confirmPassword') {
-                    if (val !== this.registerForm.password) {
-                        this.errors.confirmPassword = this.t('errPasswordMismatch');
-                    }
-                }
-            },
-
-            isLoginValid() {
-                return this.isValidEmail(this.loginForm.email) &&
-                    this.loginForm.password.length > 0;
-            },
-
-            isRegisterValid() {
-                return !this.isValidUsername(this.registerForm.name) &&
-                    this.registerForm.name.length >= 3 &&
-                    this.isValidEmail(this.registerForm.email) &&
-                    this.isValidPassword(this.registerForm.password) &&
-                    this.registerForm.password === this.registerForm.confirmPassword;
-            },
-
-            isForgotValid() {
-                return this.isValidEmail(this.forgotForm.email);
-            },
-
-            resetForms() {
-                this.loginForm = {email: '', password: ''};
-                this.registerForm = {name: '', email: '', password: '', confirmPassword: ''};
-                this.forgotForm = {email: ''};
-            },
-
-            closeModal() {
-                this.modalOpen = false;
-                this.errors = {};
-                this.message = null;
-                this.resetForms();
-            },
-
-            transitionView(newView) {
-                this.currentView = newView;
-                this.errors = {};
-                this.message = null;
-                this.resetForms();
-            },
-
-            async handleLogin() {
-                this.errors = {};
-                this.message = null;
-
-                if (!this.isValidEmail(this.loginForm.email)) {
-                    this.errors.email = this.t('errEmailInvalid');
-                    return;
-                }
-                // Allow submission even if password regex fails? Usually yes, let backend decide,
-                // but keeping your logic:
-                if (!this.isValidPassword(this.loginForm.password)) {
-                    // Sometimes we don't validate password complexity on login to avoid revealing rules,
-                    // but keeping your logic:
-                    this.errors.password = this.t('errPasswordInvalid');
-                    // return; // Optional: prevent submit
-                }
-
-                this.isSubmitting = true;
-
-                try {
-                    const formData = new FormData();
-                    formData.append('email', this.loginForm.email);
-                    formData.append('password', this.loginForm.password);
-
-                    const response = await fetch('/auth/signin', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        const errMsg = await response.text() || 'Something went wrong';
-                        console.error(errMsg);
-                        this.message = {type: 'error', text: this.t('msgLoginError')}; // Or use errMsg
-                    } else {
-                        const data = await response.json();
-                        this.message = {type: 'success', text: this.t('msgLoginSuccess')};
-                        console.log(data);
-                        // Wait a moment to show success then close
-                        setTimeout(() => this.closeModal(), 1000);
-                        window.location.reload()
-                    }
-                } catch (err) {
-                    console.error(err);
-                    this.message = {type: 'error', text: this.t('msgLoginError')};
-                } finally {
-                    this.isSubmitting = false;
-                }
-            },
-
-            async handleRegister() {
-                this.errors = {};
-                this.message = null;
-                let isValid = true;
-
-                if (!this.isValidUsername(this.registerForm.name)) {
-                    this.errors.name = this.t('errNameInvalid');
-                    isValid = false;
-                }
-                if (!this.isValidEmail(this.registerForm.email)) {
-                    this.errors.email = this.t('errEmailInvalid');
-                    isValid = false;
-                }
-                if (!this.isValidPassword(this.registerForm.password)) {
-                    this.errors.password = this.t('errPasswordInvalid');
-                    isValid = false;
-                }
-                if (this.registerForm.password !== this.registerForm.confirmPassword) {
-                    this.errors.confirmPassword = this.t('errPasswordMismatch');
-                    isValid = false;
-                }
-
-                if (!isValid) return;
-
-                this.isSubmitting = true;
-
-                try {
-                    const formData = new FormData();
-                    formData.append('name', this.registerForm.name);
-                    formData.append('email', this.registerForm.email);
-                    formData.append('password', this.registerForm.password);
-
-                    const response = await fetch('/auth/signup', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        const errMsg = await response.text() || 'Something went wrong';
-                        this.message = {type: 'error', text: errMsg};
-                    } else {
-                        this.message = {type: 'success', text: this.t('msgRegisterSuccess')};
-                        setTimeout(() => this.closeModal(), 1500);
-                    }
-                } catch (err) {
-                    console.error(err);
-                    this.message = {type: 'error', text: String(err)};
-                } finally {
-                    this.isSubmitting = false;
-                }
-            },
-
-            async handleForgot() {
-                this.errors = {};
-                this.message = null;
-
-                if (!this.isValidEmail(this.forgotForm.email)) {
-                    this.errors.email = this.t('errEmailInvalid');
-                    return;
-                }
-
-                this.isSubmitting = true;
-
-                try {
-                    const formData = new FormData();
-                    formData.append('email', this.forgotForm.email);
-
-                    const response = await fetch('/auth/forgot', {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        const errMsg = await response.text() || 'Something went wrong';
-                        this.message = {type: 'error', text: errMsg};
-                    } else {
-                        this.forgotForm.email = '';
-                        this.message = {type: 'success', text: this.t('msgForgotSuccess')};
-                        setTimeout(() => this.switchMode('login'), 1500); // Return to log in after success
-                    }
-                } catch (err) {
-                    this.message = {type: 'error', text: 'Network error'};
-                } finally {
-                    this.isSubmitting = false;
-                }
-            }
-        }
-    }
-</script>
+@AuthScript()
 <div x-data="authModal"
      class="relative z-50 w-auto h-auto"
      @keydown.escape.window="closeModal()"
@@ -420,6 +162,37 @@ templ AuthModal() {
                                 <p x-show="errors.password" x-text="errors.password"
                                    class="text-red-500 text-xs mt-1"></p>
                             </div>
+
+                            <!-- password meter -->
+                            <div class="mt-2 space-y-2">
+                                <div class="flex h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                                    <div class="transition-all duration-500"
+                                         :class="{
+                                                    'w-1/5 bg-red-500': passwordRequirements.score === 1,
+                                                    'w-2/5 bg-orange-500': passwordRequirements.score === 2,
+                                                    'w-3/5 bg-yellow-500': passwordRequirements.score === 3,
+                                                    'w-4/5 bg-blue-500': passwordRequirements.score === 4,
+                                                    'w-full bg-green-500': passwordRequirements.score === 5
+                                                  }"
+                                         :style="`width: ${(passwordRequirements.score / 5) * 100}%`"
+                                    ></div>
+                                </div>
+                                <div class="grid grid-cols-2 gap-1 text-[10px] uppercase tracking-wider font-bold">
+                                    <div :class="passwordRequirements.length ? 'text-green-600' : 'text-gray-400'">• 8+
+                                        Chars
+                                    </div>
+                                    <div :class="passwordRequirements.upper ? 'text-green-600' : 'text-gray-400'">•
+                                        Uppercase
+                                    </div>
+                                    <div :class="passwordRequirements.lower ? 'text-green-600' : 'text-gray-400'">•
+                                        Lowercase
+                                    </div>
+                                    <div :class="passwordRequirements.special ? 'text-green-600' : 'text-gray-400'">•
+                                        Symbol
+                                    </div>
+                                </div>
+                            </div>
+
                             <div>
                                 <label for="register-confirm" class="block text-sm font-medium text-gray-700">
                                     Confirm Password

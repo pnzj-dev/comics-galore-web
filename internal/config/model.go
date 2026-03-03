@@ -12,10 +12,11 @@ type Env struct {
 	AppEnv            string `env:"APP_ENV" envDefault:"local"`
 	DatabaseDSN       string `env:"DATABASE_DSN"`
 	MaxCommentNesting int    `env:"MAX_COMMENT_NESTING" envDefault:"5"`
-	BetterAuth        string `env:"BETTER_AUTH" envDefault:"https://your-auth-server.com"`
+	BetterAuth        string `env:"BETTER_AUTH" envDefault:"https://auth.comics-galore.com/api/auth/"`
+	BetterAuthSecret  string `env:"BETTER_AUTH_SECRET"`
 	JwksUrl           string `env:"JWKS_URL"`
 	JwksFunc          keyfunc.Keyfunc
-	SessionKey        string   `env:"SESSION_KEY"`
+	SessionKey        string   `env:"SESSION_KEY" envDefault:"comics-galore.session_token"`
 	AllowedRoles      []string `env:"ALLOWED_ROLES" envDefault:"admin,editor,user"`
 
 	// AWS Configuration

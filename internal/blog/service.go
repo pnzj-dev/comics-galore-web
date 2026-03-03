@@ -47,10 +47,10 @@ func (s *service) IncrementPostView(ctx context.Context, params database.Increme
 	return nil
 }
 
-func NewService(queries *database.Queries, logger *slog.Logger) Service {
+func NewService(querier *database.Queries, logger *slog.Logger) Service {
 	return &service{
-		queries: queries,
-		logger:  logger,
+		queries: querier,
+		logger:  logger.With("component", "blog_service"),
 	}
 }
 

@@ -1,4 +1,4 @@
-package web
+package header
 
 templ Header(contents templ.Component) {
 <header class="bg-white border-b shadow-sm" x-init="$nextTick($store.i18n.init())">
@@ -9,17 +9,13 @@ templ Header(contents templ.Component) {
             </a>
         </div>
         <div class="flex justify-end space-x-2 text-sm">
-            <button
-                    @click="$store.i18n.setLang('en')"
-                    :class="$store.i18n.currentLang === 'en' ? 'font-bold text-indigo-600' : 'text-gray-500 hover:text-indigo-500'"
-            >
+            <button @click="$store.i18n.setLang('en')"
+                    :class="$store.i18n.currentLang === 'en' ? 'font-bold text-indigo-600' : 'text-gray-500 hover:text-indigo-500'">
                 English
             </button>
             <span>|</span>
-            <button
-                    @click="$store.i18n.setLang('fr')"
-                    :class="$store.i18n.currentLang === 'fr' ? 'font-bold text-indigo-600' : 'text-gray-500 hover:text-indigo-500'"
-            >
+            <button @click="$store.i18n.setLang('fr')"
+                    :class="$store.i18n.currentLang === 'fr' ? 'font-bold text-indigo-600' : 'text-gray-500 hover:text-indigo-500'">
                 Français
             </button>
         </div>

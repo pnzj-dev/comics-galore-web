@@ -1,14 +1,12 @@
 package card
 
 import "fmt"
-import "comics-galore-web/internal/blog"
 import "comics-galore-web/cmd/web/badge"
-import "comics-galore-web/cmd/web/utils"
+import "comics-galore-web/internal/blog"
 
 
 templ Card(post *blog.Post, isFavorite bool) {
-<div class="relative bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-sm mx-auto group"
->
+<div class="relative bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-sm mx-auto group">
     <div class="relative w-full overflow-hidden" style="padding-top: 66.66%;">
         <!--
         <div class="absolute top-2 left-2 z-20">
@@ -16,10 +14,10 @@ templ Card(post *blog.Post, isFavorite bool) {
         </div>
         -->
         <a href={post.Url()}>
-            <img src={post.Cover.CloudflareID} alt={post.Title+"\u0020"+"Cover"}
+            <img src={post.Cover.GetURL()} alt={post.Title+"\u0020"+"Cover"}
                  onerror="this.src='/assets/images/image-error-placeholder.svg';this.onerror='';"
                  class="absolute inset-0 w-full h-full object-cover"/>
-            if !utils.IsOlderThanHours(post.UpdatedAt, 5) {
+            if !post.IsUpdatedAtOlderThanHours(5) {
             <div class="absolute top-2 left-2 bg-red-600 bg-opacity-90 text-white text-xs font-semibold px-2 py-1 rounded">
                 NEW
             </div>
@@ -37,7 +35,8 @@ templ Card(post *blog.Post, isFavorite bool) {
     <div class="p-4 space-y-3">
         <h3 class="text-xl font-bold text-gray-900 truncate">{post.Title}</h3>
         <p class="text-sm text-gray-600">
-            By <span class="font-medium">{post.AuthorName}</span> <span>in </span> @badge.Badge(post.CategoryName, "purple")
+            By <span class="font-medium">{post.AuthorName}</span> <span>in </span> @badge.Badge(post.CategoryName,
+            "purple")
         </p>
         <div class="flex items-center text-sm text-gray-700 space-x-4">
             <div class="flex items-center">

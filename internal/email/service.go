@@ -32,10 +32,10 @@ func WithFromAddress(name, email string) Option {
 	}
 }
 
-func NewEmailService(cfg config.Service, logger *slog.Logger, opts ...Option) Service {
+func NewService(cfg config.Service, opts ...Option) Service {
 	s := &service{
 		cfg:       cfg,
-		logger:    logger.With("component", "email_service"),
+		logger:    cfg.GetLogger().With("component", "email_service"),
 		fromName:  "System",
 		fromEmail: "noreply@yourdomain.com",
 	}

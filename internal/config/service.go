@@ -1,10 +1,13 @@
 package config
 
 import (
+	"comics-galore-web/internal/database"
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/caarlos0/env/v10"
@@ -14,61 +17,84 @@ import (
 type Service interface {
 	Get() *Env
 	Reload(ctx context.Context) error
+	GetLogger() *slog.Logger
+	GetQuerier() *database.Queries
+	GetDbResource() database.Resources
 }
 
 type service struct {
-	mu     sync.RWMutex
-	cfg    *Env
-	logger *slog.Logger
+	mu         sync.RWMutex
+	cfg        *Env
+	logger     *slog.Logger
+	querier    *database.Queries
+	dbResource database.Resources
 }
 
-func NewService(logger *slog.Logger) (Service, error) {
+func NewService(ctx context.Context) (Service, error) {
+
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	slog.SetDefault(logger)
+
 	s := &service{
-		logger: logger.With("component", "config_service"),
+		logger: logger,
 	}
 
-	// Initial load
-	if err := s.Reload(context.Background()); err != nil {
+	if err := s.Reload(ctx); err != nil {
 		return nil, fmt.Errorf("initial config load failed: %w", err)
 	}
+
+	dbResource, err := database.NewResources(ctx, s.cfg.DatabaseDSN, logger)
+	if err != nil {
+		return nil, fmt.Errorf("database initialization failure: %w", err)
+	}
+
+	s.dbResource = dbResource
+	s.querier = database.New(dbResource.GetPool())
 
 	return s, nil
 }
 
-// Get returns a thread-safe copy of the configuration
 func (s *service) Get() *Env {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.cfg
 }
 
-// Reload re-reads environment variables and re-initializes dependencies like JWKS
 func (s *service) Reload(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	l := s.logger.With("op", "Reload")
 
-	// 1. Optional: Re-load .env (useful for local dev)
+	// 1. Load environment
 	if err := godotenv.Overload(); err != nil {
-		l.Debug("skipping .env overload", "reason", "file not found or unreadable")
+		l.Debug("no .env file loaded", "error", err)
 	}
 
-	newCfg := &Env{}
-	if err := env.Parse(newCfg); err != nil {
-		l.Error("environment parsing failed", "error", err)
-		return err
+	tempCfg := &Env{}
+	if err := env.Parse(tempCfg); err != nil {
+		return fmt.Errorf("parsing env: %w", err)
 	}
 
-	// 2. Logic-heavy initializations (like JWKS)
-	jwksFunc, err := keyfunc.NewDefault([]string{newCfg.JwksUrl})
+	// 2. Properly context-aware JWKS initialization
+	fetchCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	jwks, err := keyfunc.NewDefaultCtx(fetchCtx, []string{tempCfg.JwksUrl})
 	if err != nil {
-		l.Error("failed to update JWKS keyfunc", "url", newCfg.JwksUrl, "error", err)
-		return err
+		return fmt.Errorf("jwks initialization (network fetch failed): %w", err)
 	}
-	newCfg.JwksFunc = jwksFunc
 
-	s.cfg = newCfg
-	l.Info("configuration synchronized successfully")
+	tempCfg.JwksFunc = jwks
+
+	// 3. Atomic swap
+	s.mu.Lock()
+	s.cfg = tempCfg
+	s.mu.Unlock()
+
+	l.Info("configuration synchronized")
 	return nil
 }
+
+func (s *service) GetLogger() *slog.Logger           { return s.logger }
+func (s *service) GetQuerier() *database.Queries     { return s.querier }
+func (s *service) GetDbResource() database.Resources { return s.dbResource }

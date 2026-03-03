@@ -24,10 +24,10 @@ type service struct {
 	logger *slog.Logger
 }
 
-func NewService(cfg config.Service, logger *slog.Logger) Service {
+func NewService(cfg config.Service) Service {
 	return &service{
 		cfg:    cfg,
-		logger: logger.With("component", "archive_service"),
+		logger: cfg.GetLogger().With("component", "archive_service"),
 	}
 }
 

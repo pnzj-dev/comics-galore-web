@@ -1,6 +1,7 @@
 package picture
 
 import (
+	"comics-galore-web/internal/config"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -19,10 +20,10 @@ type Handler interface {
 	RegisterRoutes(app *fiber.App)
 }
 
-func NewHandler(service Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, service Service) Handler {
 	return &handler{
 		svc:    service,
-		logger: logger.With("component", "picture_handler"),
+		logger: cfg.GetLogger().With("component", "picture_handler"),
 	}
 }
 

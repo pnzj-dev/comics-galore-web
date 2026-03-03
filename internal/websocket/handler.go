@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"comics-galore-web/internal/config"
 	"log/slog"
 
 	"github.com/gofiber/contrib/v3/websocket"
@@ -16,9 +17,9 @@ type Handler interface {
 	Listen(c *websocket.Conn)
 }
 
-func NewHandler(logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service) Handler {
 	return &handler{
-		logger: logger.With("component", "websocket_handler"),
+		logger: cfg.GetLogger().With("component", "websocket_handler"),
 	}
 }
 

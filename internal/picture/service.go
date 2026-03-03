@@ -5,10 +5,10 @@ import (
 	"comics-galore-web/internal/config"
 	"context"
 	"fmt"
-	_ "golang.org/x/image/webp" // Register WebP decoder
+	_ "golang.org/x/image/webp" // RegisterRoutes WebP decoder
 	"image"
 	"image/jpeg"
-	_ "image/png" // Register PNG decoder
+	_ "image/png" // RegisterRoutes PNG decoder
 	"io"
 	"log/slog"
 	"net/http"
@@ -38,11 +38,11 @@ type Service interface {
 	Shutdown(timeout time.Duration) error
 }
 
-func NewService(cfg config.Service, logger *slog.Logger, dryRun bool) Service {
+func NewService(cfg config.Service, dryRun bool) Service {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
 		cfg:             cfg,
-		logger:          logger.With("component", "picture_service"),
+		logger:          cfg.GetLogger().With("component", "picture_service"),
 		cachePrefix:     "processed/",
 		cacheExpiration: 24 * time.Hour,
 		dryRun:          dryRun,

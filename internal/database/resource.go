@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3/log"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log/slog"
 	"time"
 )
 
@@ -56,16 +57,20 @@ type Resources interface {
 
 // NewResources initializes the application's database resources.
 // It sets up a pool for standard queries and a single connection for stateful operations.
-func NewResources(ctx context.Context, dsn string) (Resources, error) {
+func NewResources(ctx context.Context, dsn string, logger *slog.Logger) (Resources, error) {
 	if dsn == "" {
+		// Log the error before returning
+		logger.ErrorContext(ctx, "database initialization failed", "error", "DSN string is empty")
 		return nil, fmt.Errorf("database DSN string is empty")
 	}
 
-	log.Info("Initializing database infrastructure...")
+	// Using slog.Info with context
+	logger.InfoContext(ctx, "Initializing database infrastructure...")
 
 	// 1. Configure the connection pool
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
+		logger.ErrorContext(ctx, "failed to parse pool config", "error", err)
 		return nil, fmt.Errorf("parsing pool config: %w", err)
 	}
 
@@ -82,24 +87,30 @@ func NewResources(ctx context.Context, dsn string) (Resources, error) {
 	// 2. Create the Pool
 	pool, err := pgxpool.NewWithConfig(initCtx, poolConfig)
 	if err != nil {
+		logger.ErrorContext(ctx, "failed to create connection pool", "error", err)
 		return nil, fmt.Errorf("creating connection pool: %w", err)
 	}
 
 	// Verify pool health immediately
 	if err := pool.Ping(initCtx); err != nil {
+		logger.ErrorContext(ctx, "database ping failed", "error", err)
 		pool.Close()
 		return nil, fmt.Errorf("database ping failed: %w", err)
 	}
 
 	// 3. Create dedicated Connection for LISTEN/NOTIFY
-	// We use the same DSN but a separate pgx.Connect to ensure it's outside the pool
 	listenConn, err := pgx.Connect(initCtx, dsn)
 	if err != nil {
+		logger.ErrorContext(ctx, "failed to create listener connection", "error", err)
 		pool.Close()
 		return nil, fmt.Errorf("creating listener connection: %w", err)
 	}
 
-	log.Info("Database pool and listener connection established")
+	// Structured success log with metadata
+	logger.InfoContext(ctx, "Database pool and listener connection established",
+		"max_conns", poolConfig.MaxConns,
+		"min_conns", poolConfig.MinConns,
+	)
 
 	return &resources{
 		Pool:       pool,

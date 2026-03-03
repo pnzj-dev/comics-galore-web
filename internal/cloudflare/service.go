@@ -36,7 +36,7 @@ func WithBackup(s3 archive.Service) ImageOption {
 	}
 }
 
-func NewService(cfg config.Service, logger *slog.Logger, opts ...ImageOption) Images {
+func NewService(cfg config.Service, opts ...ImageOption) Images {
 	client := resty.New().
 		SetTimeout(2*time.Minute).
 		SetHeader("Accept", "application/json")
@@ -44,7 +44,7 @@ func NewService(cfg config.Service, logger *slog.Logger, opts ...ImageOption) Im
 	s := &images{
 		cfg:    cfg,
 		client: client,
-		logger: logger,
+		logger: cfg.GetLogger(),
 	}
 
 	for _, opt := range opts {

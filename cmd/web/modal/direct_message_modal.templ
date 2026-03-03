@@ -1,0 +1,18 @@
+package modal
+
+import "comics-galore-web/internal/auth"
+import "comics-galore-web/cmd/web/message"
+
+templ DirectMessageModal(isOpenState string, closeAction string, user *auth.Claims) {
+	@Modal(
+		"direct-message-modal",
+		"Direct Message",
+		isOpenState,
+		closeAction,
+		message.DirectMessage(user.Id),
+		WithWidth("sm:w-full"),
+		WithMaxWidth("sm:max-w-5xl"),
+		WithMaxHeight("max-h-[98vh]"),
+		WithMinHeight("min-h-[66vh]"),
+	)
+}

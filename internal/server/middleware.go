@@ -1,7 +1,7 @@
 package server
 
 import (
-	"comics-galore-web/cmd/web"
+	"comics-galore-web/cmd/web/not_found"
 	"comics-galore-web/cmd/web/templates"
 	"comics-galore-web/internal/config"
 	"fmt"
@@ -16,7 +16,7 @@ import (
 
 func (s *FiberServer) setupGlobalMiddleware(cfg config.Service) {
 	s.App.Use(s.Timing())
-	s.App.Use(s.CustomHeaderMiddleware())
+	s.App.Use(s.CustomHeaderMiddleware(cfg))
 	s.App.Use(favicon.New(favicon.Config{
 		File:         "./public/favicon.ico",
 		URL:          "/favicon.ico",
@@ -38,9 +38,9 @@ func (s *FiberServer) setupGlobalMiddleware(cfg config.Service) {
 	//s.App.Use(auth.SessionCheck(env))
 }
 
-func (s *FiberServer) CustomHeaderMiddleware() fiber.Handler {
+func (s *FiberServer) CustomHeaderMiddleware(cfg config.Service) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		c.Set("X-App-Version", s.config.Get().Version)
+		c.Set("X-App-Version", cfg.Get().Version)
 		return c.Next()
 	}
 }
@@ -84,7 +84,7 @@ func (s *FiberServer) NotFound() fiber.Handler {
 		}
 
 		title := "404 - Page Not Found | Comics Galore"
-		notFound := web.NotFound(c.OriginalURL())
+		notFound := not_found.NotFound(c.OriginalURL())
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
 		return templates.BasicLayout(title, notFound).Render(c.Context(), c.Response().BodyWriter())
 	}

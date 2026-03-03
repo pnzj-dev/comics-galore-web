@@ -1,8 +1,7 @@
-package utils
+package blog
 
 import (
 	"fmt"
-	"math/rand"
 	"regexp"
 	"strings"
 	"time"
@@ -27,18 +26,6 @@ func FormatSize(size int64) string {
 	return fmt.Sprintf("%.1f %s", val, units[unitIndex])
 }
 
-var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
-
-func GenerateRandomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" // Character pool
-	randomString := make([]byte, n)
-	for i := range randomString {
-		randomIndex := seededRand.Intn(len(letters))
-		randomString[i] = letters[randomIndex]
-	}
-	return string(randomString)
-}
-
 func GenerateSlug(title string) string {
 	slug := strings.ToLower(title)
 	slug = regexp.MustCompile(`[^\w\s-]`).ReplaceAllString(slug, "")
@@ -46,4 +33,19 @@ func GenerateSlug(title string) string {
 	slug = strings.Trim(slug, "-")
 	slug = regexp.MustCompile(`-+`).ReplaceAllString(slug, "-")
 	return slug
+}
+
+func FormatDateTime(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.Format("02/01/2006 15:04:05")
+}
+
+func IsOlderThanHours(givenDate time.Time, hours int) bool {
+	if givenDate.IsZero() {
+		return false
+	}
+	threshold := time.Duration(hours) * time.Hour
+	return time.Since(givenDate) > threshold
 }

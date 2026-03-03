@@ -1,6 +1,7 @@
 package qrcode
 
 import (
+	"comics-galore-web/internal/config"
 	"fmt"
 	"log/slog"
 
@@ -17,10 +18,10 @@ type Handler interface {
 	RegisterRoutes(app *fiber.App)
 }
 
-func NewHandler(service Service, logger *slog.Logger) Handler {
+func NewHandler(cfg config.Service, service Service) Handler {
 	return &handler{
 		svc:    service,
-		logger: logger.With("component", "qrcode_handler"),
+		logger: cfg.GetLogger().With("component", "qrcode_handler"),
 	}
 }
 
