@@ -24,3 +24,19 @@ CREATE TRIGGER trg_on_new_message
     FOR EACH ROW
 EXECUTE FUNCTION func_on_new_message();
 
+-- Trigger for Users
+CREATE TRIGGER trg_count_users
+    AFTER INSERT OR DELETE ON users
+    FOR EACH STATEMENT EXECUTE FUNCTION update_entity_count();
+
+-- Trigger for Blogposts
+CREATE TRIGGER trg_count_blogposts
+    AFTER INSERT OR DELETE ON blogposts
+    FOR EACH STATEMENT EXECUTE FUNCTION update_entity_count();
+
+-- Trigger for Archives
+CREATE TRIGGER trg_count_archives
+    AFTER INSERT OR DELETE ON archives
+    FOR EACH STATEMENT EXECUTE FUNCTION update_entity_count();
+
+

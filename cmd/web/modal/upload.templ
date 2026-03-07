@@ -1,15 +1,8 @@
 package modal
 
-import "comics-galore-web/internal/view"
-import "comics-galore-web/internal/blog"
 
-
-templ UploadModal(isOpenState string, closeAction string, settings *view.Settings) {
-@Modal("upload-modal","Create a new post",isOpenState,closeAction, uploadModalContent(settings, &blog.Post{}),WithStatic(true),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
-}
-
-templ uploadModalContent(settings *view.Settings, initialPost *blog.Post) {
-<div x-data="uploadForm()">
+templ ModalUpload() {
+<div x-data="modalUpload()" x-on:modal-open.window="if ($event.detail === 'upload') step = 1" class="w-full">
     <!-- Stepper -->
     <div class="border-b border-gray-200 dark:border-gray-700 mb-8">
         <nav class="flex justify-around -mb-px" aria-label="Tabs">
@@ -60,9 +53,6 @@ templ uploadModalContent(settings *view.Settings, initialPost *blog.Post) {
                     class="flex w-full h-10 px-3 py-2 text-sm bg-white border rounded-md border-neutral-300 ring-offset-background placeholder:text-neutral-500 focus:border-neutral-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-neutral-400 disabled:cursor-not-allowed disabled:opacity-50"
                     required>
                 <option value="">Select a category</option>
-                for _,category := range settings.Categories {
-                <option value={category.Index}>{category.Name}</option>
-                }
             </select>
             <p x-show="errors.category" x-text="errors.category" class="mt-2 text-sm text-red-600"></p>
         </div>
@@ -192,7 +182,7 @@ templ uploadModalContent(settings *view.Settings, initialPost *blog.Post) {
     </div>
 </div>
 <script>
-    function uploadForm() {
+    function modalUpload() {
         return {
             step: 1,
             config: {},
@@ -207,8 +197,8 @@ templ uploadModalContent(settings *view.Settings, initialPost *blog.Post) {
             storage: null,
 
             init() {
-                this.config = JSON.parse({{ templ.JSONString(settings) }});
-                const initialPost = JSON.parse({{ templ.JSONString(initialPost) }});
+                this.config = {};
+                const initialPost = {};
                 /*const client = new Appwrite.Client();
                 client.setEndpoint(this.config.endpoint).setProject(this.config.projectId);
                 this.storage = new Appwrite.Storage(client);*/
@@ -216,19 +206,6 @@ templ uploadModalContent(settings *view.Settings, initialPost *blog.Post) {
                     this.formData = {...initialPost};
                 }
             },
-
-            /*async getJwt() {
-                if (this.jwt && new Date(this.jwt.expires) > new Date()) return this.jwt.token;
-                try {
-                    const response = await fetch('/auth/jwt');
-                    if (!response.ok) throw new Error('Failed to fetch JWT');
-                    this.jwt = await response.json();
-                    return this.jwt.token;
-                } catch (error) {
-                    this.globalError = error.message;
-                    return null;
-                }
-            },*/
 
             validateStep(currentStep) {
                 this.errors = {};

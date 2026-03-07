@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
@@ -47,6 +48,7 @@ type Claims struct {
 	Role           string    `json:"role"`
 	Banned         bool      `json:"banned"`
 	BanReason      *string   `json:"banReason"`
+	NightMode      bool      `json:"nightMode"`
 	BanExpires     *string   `json:"banExpires"`
 	MembershipPlan string    `json:"membershipPlan"`
 	Id             string    `json:"id"`
@@ -57,7 +59,7 @@ func (c *Claims) AvatarUrl() string {
 	if c.Image != nil {
 		return *c.Image
 	}
-	return ""
+	return fmt.Sprintf("https://ui-avatars.com/api/?name=%s", c.Name)
 }
 
 func (c *Claims) AvatarAlt() string {

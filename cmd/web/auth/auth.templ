@@ -2,10 +2,8 @@ package auth
 
 templ AuthModal() {
 @AuthScript()
-<div x-data="authModal"
-     class="relative z-50 w-auto h-auto"
-     @keydown.escape.window="closeModal()"
-     xmlns:x-transition="http://www.w3.org/1999/xhtml">
+<div x-data="authModal" class="relative z-50 w-auto h-auto"
+     @keydown.escape.window="closeModal()" xmlns:x-transition="http://www.w3.org/1999/xhtml">
     <button @click="modalOpen=true; currentView='login'"
             class="px-6 py-3 font-bold text-white bg-indigo-600 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-150">
         Sign In / Register

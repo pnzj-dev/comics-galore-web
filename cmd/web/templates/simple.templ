@@ -1,19 +1,20 @@
 package templates
 
+
 templ BasicLayout(title string, contents templ.Component) {
-	<!DOCTYPE html>
-	<html lang="en">
-		<head>
-			<meta charset="UTF-8"/>
-			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<title>{ title }</title>
-			<link href="/assets/css/output.css" rel="stylesheet"/>
-			<link href="/assets/css/global.css" rel="stylesheet"/>
-			<!-- Optional favicon or meta tags -->
-			<!--<link rel="icon" href="/assets/images/favicon.ico" /> -->
-		</head>
-		<body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-6 text-center">
-			@contents
-		</body>
-	</html>
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <title>{ title }</title>
+        <link href="/assets/css/output.css" rel="stylesheet"/>
+        <link href="/assets/css/global.css" rel="stylesheet"/>
+        <!-- Optional favicon or meta tags -->
+        <!--<link rel="icon" href="/assets/images/favicon.ico" /> -->
+    </head>
+    <body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-6 text-center">
+        @contents
+    </body>
+</html>
 }

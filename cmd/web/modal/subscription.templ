@@ -1,28 +1,10 @@
 package modal
 
-import "comics-galore-web/internal/view"
-import "fmt"
 
+templ ModalSubscription() {
+<div x-data="modalSubscription()" x-on:modal-open.window="if ($event.detail === 'subscription') step = 'plans'"
+     class="w-full">
 
-templ SubscriptionModal(isOpenState string, closeAction string, openAction string, settings *view.Settings) {
-@Modal("subscription-modal", "Subscription", isOpenState, closeAction, subscriptionModalContent(settings),
-WithWidth("sm:w-full"),
-WithMaxWidth("sm:max-w-5xl"),
-WithMaxHeight("max-h-[98vh]"),
-WithMinHeight("min-h-[66vh]"),
-WithTrigger(triggerButton(openAction)))
-}
-
-templ triggerButton(onClickAction string) {
-<button x-on:click={onClickAction} class="absolute top-0 right-0 mt-4 mr-4 text-gray-400 hover:text-gray-600">
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-    </svg>
-</button>
-}
-
-templ subscriptionModalContent(settings *view.Settings) {
-<div x-data={fmt.Sprintf("subscriptionModal(%s)",MarshalPlans(settings.SubscriptionPlans))}>
     <div x-show="step === 'plans'">
         <h2 class="text-2xl font-bold mb-4">Choose Your Subscription Plan</h2>
         <div class="space-y-4">
@@ -64,7 +46,8 @@ templ subscriptionModalContent(settings *view.Settings) {
         <h2 class="text-2xl font-bold mb-4">Select Payment Currency</h2>
         <div class="mb-6">
             <label>
-                <select class="w-full p-2 border border-gray-300 rounded-md" @change="selectCrypto($event.target.value)">
+                <select class="w-full p-2 border border-gray-300 rounded-md"
+                        @change="selectCrypto($event.target.value)">
                     <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <option value="USDT">Tether (USDT)</option>
@@ -105,4 +88,23 @@ templ subscriptionModalContent(settings *view.Settings) {
         </div>
     </div>
 </div>
+<script>
+    function modalSubscription() {
+        return {
+            step: 'plans',
+            plans: {}, // Use templ.JSON for safe injection
+            selectedPlan: null,
+            selectedCrypto: {Symbol: 'BTC'},
+            isEstimating: false,
+            estimatedCryptoAmount: '0.00',
+            paymentDetails: null,
+
+            selectPlan(plan) {
+                this.selectedPlan = plan;
+            },
+
+            // ... your other methods (selectCrypto, proceedToPayment, etc.) ...
+        }
+    }
+</script>
 }

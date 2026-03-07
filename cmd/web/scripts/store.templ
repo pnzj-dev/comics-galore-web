@@ -46,6 +46,61 @@ templ StoreScript() {
             }
         });
 
+        Alpine.store('auth', {
+            user: null,
+
+            init() {
+                const sessionStr = localStorage.getItem("auth");
+                if (sessionStr) {
+                    try {
+                        const sessionObj = JSON.parse(sessionStr);
+                        // Better-Auth returns the user object inside the data structure
+                        this.user = sessionObj.user || sessionObj.data?.user || null;
+                    } catch (e) {
+                        console.error("Failed to parse auth session", e);
+                        localStorage.removeItem("auth");
+                    }
+                }
+            },
+
+            getAvatarUrl() {
+                // Return a default fallback avatar if user is null or image is missing
+                return this.user?.image || '/assets/images/default-avatar-1.svg';
+            },
+
+            getName() {
+                // Return a default string if user is null
+                return this.user?.name || 'Guest';
+            }
+        })
+
+        /*Alpine.store('modals', {
+            uploadModalOpen: false,
+            logoutModalOpen: false,
+            profileModalOpen: false,
+            billingModalOpen: false,
+            supportModalOpen: false,
+            settingsModalOpen: false,
+            toggleUploadModal() {
+                this.uploadModalOpen = !this.uploadModalOpen
+            },
+            toggleLogoutModal() {
+                this.logoutModalOpen = !this.logoutModalOpen
+            },
+            toggleProfileModal() {
+                this.profileModalOpen = !this.profileModalOpen
+            },
+            toggleBillingModal() {
+                this.billingModalOpen = !this.billingModalOpen
+            },
+            toggleSupportModal() {
+                this.supportModalOpen = !this.supportModalOpen
+            },
+            toggleSettingsModal() {
+                this.settingsModalOpen = !this.settingsModalOpen
+            },
+        })*/
+
         // 3. Initialize any store setup that needs to run immediately
         //Alpine.store('i18n').init(); // Assuming your i18n store has an init function
 

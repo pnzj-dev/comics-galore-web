@@ -76,6 +76,7 @@ type Post struct {
 	AnonViews    int64       `json:"anonViews"`
 	Downloads    int64       `json:"downloads"`
 	Comments     int64       `json:"comments"`
+	CategoryID   string      `json:"categoryId"`
 }
 
 type Archive struct {
@@ -137,4 +138,8 @@ func (p *Post) StarClass(index int) string {
 
 func (p *Post) IsUpdatedAtOlderThanHours(hours int) bool {
 	return IsOlderThanHours(p.UpdatedAt, hours)
+}
+
+func (p *Post) GetThumbnailUrl() string {
+	return fmt.Sprintf("https://imagedelivery.net/%s/thumbnail", p.Cover.CloudflareID)
 }

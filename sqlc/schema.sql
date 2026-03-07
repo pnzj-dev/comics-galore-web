@@ -156,6 +156,46 @@ CREATE TABLE conversation_participants
     PRIMARY KEY (conversation_id, user_id)
 );
 
+CREATE TABLE system_stats
+(
+    entity_name VARCHAR(50) PRIMARY KEY, -- 'users', 'blogposts', 'archives'
+    total_count BIGINT NOT NULL DEFAULT 0
+);
+
+-- Initialize counters
+INSERT INTO system_stats (entity_name, total_count)
+VALUES ('users', 0),
+       ('blogposts', 0),
+       ('archives', 0);
+
+CREATE TABLE dashboard_snapshots
+(
+    snapshot_date     DATE PRIMARY KEY,        -- Group by day
+    total_revenue     NUMERIC(12, 2) NOT NULL,
+    active_users      INTEGER        NOT NULL,
+    plan_distribution JSONB          NOT NULL, -- e.g., {"Pro": 2100, "Basic": 1100}
+    created_at        TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE daily_engagement
+(
+    date              DATE PRIMARY KEY,
+    total_downloads   INTEGER       DEFAULT 0,
+    total_404_errors  INTEGER       DEFAULT 0,
+    avg_session_depth NUMERIC(5, 2) DEFAULT 0,
+    created_at        TIMESTAMPTZ   DEFAULT NOW()
+);
+
+CREATE TABLE social_engagement
+(
+    date       DATE PRIMARY KEY,
+    comments   INTEGER NOT NULL DEFAULT 0,
+    messages   INTEGER NOT NULL DEFAULT 0,
+    reactions  INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMPTZ      DEFAULT NOW()
+);
+
+
 -- =============================================================================
 -- INDEXES & TRIGGERS
 -- =============================================================================

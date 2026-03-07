@@ -1,6 +1,11 @@
 package header
 
-templ Header(contents templ.Component) {
+//import "comics-galore-web/cmd/web/menu"
+//import auth1 "comics-galore-web/cmd/web/auth"
+//import auth2 "comics-galore-web/internal/auth"
+
+//templ Header(claims *auth2.Claims){
+templ Header(contents templ.Component){
 <header class="bg-white border-b shadow-sm" x-init="$nextTick($store.i18n.init())">
     <div class="flex items-center justify-between w-full max-w-7xl mx-auto px-6 py-4">
         <div class="flex items-center space-x-3">
@@ -19,6 +24,8 @@ templ Header(contents templ.Component) {
                 Français
             </button>
         </div>
+        {{/*@auth1.AuthModal()
+        @menu.AvatarMenu(claims)*/}}
         @contents
     </div>
 </header>

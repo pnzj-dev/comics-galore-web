@@ -1,14 +1,8 @@
 package modal
 
-import "comics-galore-web/internal/view"
-
-
-templ SupportModal(isOpenState string, closeAction string) {
-@Modal("support-modal","Support",isOpenState,closeAction,supportModalContent("", []view.SupportMessage{}),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
-}
-
-templ supportModalContent(turnstileKey string, recentMessages []view.SupportMessage) {
-<div x-data="supportModal()">
+templ ModalSupport(turnstileKey string) {
+<div x-data="modalSupport()" x-on:modal-open.window="if ($event.detail === 'support') activeTab = 'send'"
+     class="w-full">
     <div class="border-b border-gray-200 dark:border-gray-700">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
             <button @click="activeTab = 'send'"
@@ -69,21 +63,9 @@ templ supportModalContent(turnstileKey string, recentMessages []view.SupportMess
 
         <div x-show="activeTab === 'recent'" x-cloak>
             <div class="space-y-6 max-h-[50vh] overflow-y-auto pr-4">
-                if len(recentMessages) == 0 {
-                <p class="text-center text-gray-500 dark:text-gray-400">You have no recent messages.</p>
-                } else {
-                for _, msg := range recentMessages {
 
-                <div class={"flex",templ.KV("justify-end",msg.IsFromUser),templ.KV("justify-start",!msg.IsFromUser)}>
-                    <div class={
-                    "max-w-lg px-4 py-3 rounded-lg", templ.KV("bg-indigo-500 text-white", msg.IsFromUser),
-                    templ.KV("bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200", !msg.IsFromUser) }>
-                    <p class="text-sm" style="white-space: pre-wrap;">{ msg.Content }</p>
-                    <p class="text-xs opacity-75 mt-2 text-right">{ FormatTimeAgo(msg.SentAt) }</p>
-                </div>
             </div>
-            }
-            }
+
             <div class="text-center pt-4">
                 <a href="/support/history"
                    class="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
@@ -93,5 +75,31 @@ templ supportModalContent(turnstileKey string, recentMessages []view.SupportMess
         </div>
     </div>
 </div>
-</div>
+<script>
+    function modalSupport() {
+        return {
+            activeTab: 'send',
+            messageSubject: '',
+            messageContent: '',
+            turnstileToken: null,
+            isSubmitting: false,
+            formError: '',
+            formSuccess: false,
+
+            // Initialize: No need for server-side props if you fetch via API
+            init() {
+                // You can call a fetchRecentMessages() method here
+            },
+
+            // Logic for Turnstile
+            onTurnstileSuccess(token) {
+                this.turnstileToken = token;
+            },
+
+            async submitMessage(form) {
+                // ... your existing submission logic ...
+            }
+        }
+    }
+</script>
 }

@@ -1,14 +1,12 @@
 package modal
 
 import "fmt"
-import "comics-galore-web/internal/auth"
 
-templ SettingsModal(isOpenState string, closeAction string, user *auth.Claims) {
-@Modal("settings-modal","Settings",isOpenState,closeAction,settingsModalContent(user.NightMode),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
-}
 
-templ settingsModalContent(initialNightMode bool) {
-<div x-data="settingsModal()">
+
+templ ModalSettings(initialNightMode bool) {
+<div x-data="modalSettings()" x-on:modal-open.window="if ($event.detail === 'settings') console.log('Settings opened')"
+     class="w-full">
     <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">User Preferences</h3>
     <div class="space-y-4">
         <!-- Night Mode Toggle -->
@@ -51,9 +49,9 @@ templ settingsModalContent(initialNightMode bool) {
     </div>
 </div>
 <script>
-    function settingsModal() {
+    function modalSettings() {
         return {
-            nightModeEnabled: {{ fmt.Sprintf("%t", initialNightMode) }},
+            nightModeEnabled: {{ fmt.Sprintf("%t",initialNightMode) }},
             isSaving: false,
             saveError: '',
             saveSuccess: false,
@@ -78,7 +76,7 @@ templ settingsModalContent(initialNightMode bool) {
                 const newNightModeState = !this.nightModeEnabled;
 
                 try {
-                    const response = await fetch('/api/v1/users/preferences', {
+                    const response = await fetch('/api/v1/user/preferences', {
                         method: 'PATCH', // Or PUT, depending on your API
                         headers: {
                             'Content-Type': 'application/json',

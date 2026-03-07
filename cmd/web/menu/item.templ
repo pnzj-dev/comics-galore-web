@@ -7,8 +7,8 @@ const svgWrapper = `
      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 w-4 h-4">%s
 </svg>`
 
-templ MenuItem(text, shortcut, onClickAction, iconPathData string) {
-<button type="button" @click={onClickAction}
+templ DropdownItem(text, shortcut, detail, iconPathData string) {
+<button type="button" @click={fmt.Sprintf("openModal('%s')",detail)}
         class="relative flex cursor-default select-none hover:bg-neutral-100 items-center rounded px-2 py-1.5 text-sm outline-none transition-colors w-full text-left">
     @templ.Raw( fmt.Sprintf(svgWrapper, iconPathData))
     <span>{ text }</span>

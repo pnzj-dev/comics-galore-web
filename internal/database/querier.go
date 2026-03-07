@@ -12,6 +12,7 @@ import (
 
 type Querier interface {
 	AddParticipant(ctx context.Context, arg AddParticipantParams) error
+	CountPosts(ctx context.Context, arg CountPostsParams) (int64, error)
 	// =============================================================================
 	// COMMENT QUERIES (v3 Compatible)
 	// =============================================================================
@@ -26,7 +27,8 @@ type Querier interface {
 	DeleteComment(ctx context.Context, id uuid.UUID) error
 	DeleteConversation(ctx context.Context, id uuid.UUID) error
 	DeletePost(ctx context.Context, id uuid.UUID) error
-	GetArchiveByID(ctx context.Context, id uuid.UUID) (GetArchiveByIDRow, error)
+	// *** ARCHIVE QUERIES ***
+	GetArchive(ctx context.Context, id uuid.UUID) (GetArchiveRow, error)
 	GetCommentByID(ctx context.Context, id uuid.UUID) (Comment, error)
 	// Useful if your Go code wants to enforce a max nesting limit (e.g., max 5 levels).
 	GetCommentDepth(ctx context.Context, id uuid.UUID) (int32, error)
@@ -38,32 +40,29 @@ type Querier interface {
 	// Cursor-based pagination using UUID v7 (Time-ordered)
 	GetMessagesBefore(ctx context.Context, arg GetMessagesBeforeParams) ([]GetMessagesBeforeRow, error)
 	GetOrCreateDirectConversation(ctx context.Context, arg GetOrCreateDirectConversationParams) (interface{}, error)
-	GetPostArchives(ctx context.Context, postID uuid.UUID) ([]GetPostArchivesRow, error)
-	GetPostByID(ctx context.Context, id uuid.UUID) (GetPostByIDRow, error)
+	GetPost(ctx context.Context, id uuid.UUID) (GetPostRow, error)
 	// Aggregate counts for a target. target_id is UUID.
 	GetReactionSummary(ctx context.Context, arg GetReactionSummaryParams) (GetReactionSummaryRow, error)
 	// Get a user's current reaction on a target (NULL if none)
 	GetUserReaction(ctx context.Context, arg GetUserReactionParams) (ReactionType, error)
-	// Updates the separate stats table to avoid locking the main archive table.
-	IncrementDownloadCount(ctx context.Context, archiveID uuid.UUID) error
-	IncrementPostView(ctx context.Context, arg IncrementPostViewParams) error
+	IncrementArchiveDownloads(ctx context.Context, arg IncrementArchiveDownloadsParams) error
+	// *** STATISTICS & COUNTERS ***
+	IncrementPostStats(ctx context.Context, arg IncrementPostStatsParams) error
 	// Using UUID v7 for the ID (handled by DEFAULT in schema)
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error)
 	ListArchivesByPostID(ctx context.Context, postID uuid.UUID) ([]ListArchivesByPostIDRow, error)
 	ListPosts(ctx context.Context, arg ListPostsParams) ([]ListPostsRow, error)
-	ListPostsByTags(ctx context.Context, arg ListPostsByTagsParams) ([]ListPostsByTagsRow, error)
-	ListPostsByTagsFlexible(ctx context.Context, arg ListPostsByTagsFlexibleParams) ([]ListPostsByTagsFlexibleRow, error)
+	ListRelatedPosts(ctx context.Context, arg ListRelatedPostsParams) ([]ListRelatedPostsRow, error)
 	// Fetches chat list for a user with unread counts and the last message content.
 	ListUserConversations(ctx context.Context, userID string) ([]ListUserConversationsRow, error)
 	// Remove any reaction from a user on a target
 	RemoveReaction(ctx context.Context, arg RemoveReactionParams) error
 	SearchPosts(ctx context.Context, arg SearchPostsParams) ([]SearchPostsRow, error)
-	// This handles both increment (amount = 1) and decrement (amount = -1)
-	UpdateArchiveDownloads(ctx context.Context, arg UpdateArchiveDownloadsParams) error
+	SocialEngagementUpdate(ctx context.Context, arg SocialEngagementUpdateParams) error
 	UpdateComment(ctx context.Context, arg UpdateCommentParams) (Comment, error)
 	UpdateLastRead(ctx context.Context, arg UpdateLastReadParams) error
 	UpsertArchive(ctx context.Context, arg UpsertArchiveParams) (uuid.UUID, error)
-	UpsertBlogPost(ctx context.Context, arg UpsertBlogPostParams) (Blogpost, error)
+	UpsertPost(ctx context.Context, arg UpsertPostParams) (uuid.UUID, error)
 	// =============================================================================
 	// REACTION QUERIES
 	// =============================================================================

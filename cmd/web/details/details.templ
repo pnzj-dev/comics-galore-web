@@ -12,10 +12,10 @@ templ Details(post *blog.Post, relatedPosts []blog.Post, user *auth.Claims, vari
 variantsJSON,_ := templ.JSONString(variants)
 previewsJSON,_ := templ.JSONString(post.Previews)
 }}
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div x-data={fmt.Sprintf("imagesData('%s',%s,%s)","https://imagedelivery.net",variantsJSON,previewsJSON)}
+     class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div class="lg:col-span-5"
-             x-data={fmt.Sprintf("imagesData('%s',%s,%s)","https://imagedelivery.net",variantsJSON,previewsJSON)}>
+        <div class="lg:col-span-5">
             <div x-show="isFullscreenOpen"
                  x-cloak
                  class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 transition-opacity"
@@ -246,11 +246,20 @@ previewsJSON,_ := templ.JSONString(post.Previews)
             for _, related := range relatedPosts {
             <a href={templ.SafeURL(fmt.Sprintf("/post/%s/%s",related.ID,related.Slug()))} class="group">
                 <div class="aspect-[2/3] w-full overflow-hidden rounded-md bg-gray-200 shadow-sm group-hover:shadow-md transition-all">
-                    <img src={related.Cover.Variants[0]} alt={related.Title} loading="lazy"
-                         class="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"/>
+                    if len(related.Cover.Variants) > 0 {
+                    <img src={related.GetThumbnailUrl()}
+                         alt={related.Title}
+                         loading="lazy"
+                         class="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    />
+                    } else {
+                    <div class="h-full w-full bg-gray-300 flex items-center justify-center text-xs text-gray-500">No
+                        Image
+                    </div>
+                    }
                 </div>
                 <h3 class="mt-2 text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
-                    {related.Title}
+                    { related.Title }
                 </h3>
             </a>
             }

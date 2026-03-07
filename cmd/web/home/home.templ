@@ -2,16 +2,11 @@ package home
 
 import "comics-galore-web/cmd/web/card"
 import "comics-galore-web/internal/blog"
+import "comics-galore-web/internal/database"
 
 
-templ HomePage(posts []blog.Post) {
+templ HomePage(posts []blog.Post, total int64, params *database.SearchPostsParams ) {
 <div>
     @card.Cards(posts)
 </div>
 }
-
-
-
-
-
-

@@ -75,3 +75,28 @@ EXCEPTION
         RETURN v_conv_id;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION update_entity_count()
+    RETURNS TRIGGER AS
+$$
+DECLARE
+    target_entity VARCHAR(50);
+BEGIN
+    -- Map table names to the keys in system_stats
+    IF TG_TABLE_NAME = 'users' THEN
+        target_entity := 'users';
+    ELSIF TG_TABLE_NAME = 'blogposts' THEN
+        target_entity := 'blogposts';
+    ELSIF TG_TABLE_NAME = 'archives' THEN
+        target_entity := 'archives';
+    END IF;
+
+    IF (TG_OP = 'INSERT') THEN
+        UPDATE system_stats SET total_count = total_count + 1 WHERE entity_name = target_entity;
+    ELSIF (TG_OP = 'DELETE') THEN
+        UPDATE system_stats SET total_count = total_count - 1 WHERE entity_name = target_entity;
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;

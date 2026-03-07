@@ -4,19 +4,26 @@ import (
 	"comics-galore-web/internal/database"
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"log/slog"
 )
 
 type Service interface {
-	Save(ctx context.Context, params database.UpsertBlogPostParams) (uuid.UUID, error)
-	GetByID(ctx context.Context, id uuid.UUID) (*Post, error)
-	List(ctx context.Context, limit, offset int32) ([]Post, error)
+	Save(ctx context.Context, params database.UpsertPostParams) (uuid.UUID, error)
+
 	Delete(ctx context.Context, id uuid.UUID) error
-	ListArchives(ctx context.Context, postId uuid.UUID) ([]Archive, error)
-	IncrementPostView(ctx context.Context, params database.IncrementPostViewParams) error
+	Get(ctx context.Context, id uuid.UUID) (*Post, error)
+	List(ctx context.Context, limit, offset int32) ([]Post, int64, error)
+	GetArchives(ctx context.Context, id uuid.UUID) ([]Archive, error)
+
+	//IncrementView Increment view count of a post
+	IncrementView(ctx context.Context, params database.IncrementPostStatsParams) error
+
+	// ListRelated List related post by category or tags
+	ListRelated(ctx context.Context, params database.ListRelatedPostsParams) ([]Post, error)
+
+	Search(ctx context.Context, params database.SearchPostsParams) ([]Post, int64, error)
 }
 
 type service struct {
@@ -24,27 +31,58 @@ type service struct {
 	logger  *slog.Logger
 }
 
-func (s *service) IncrementPostView(ctx context.Context, params database.IncrementPostViewParams) error {
-	// 1. Create a contextual logger for this operation
-	l := s.logger.With(
-		"op", "IncrementPostView",
-		"post_id", params.PostID,
-		"auth_views", params.AuthViews,
-		"anon_views", params.AnonViews,
-	)
+func (s *service) GetArchives(ctx context.Context, id uuid.UUID) ([]Archive, error) {
+	l := s.logger.With("op", "GetArchives", "post_id", id)
 
-	// 2. Execute query
-	err := s.queries.IncrementPostView(ctx, params)
+	rows, err := s.queries.ListArchivesByPostID(ctx, id)
 	if err != nil {
-		// Log the error with structured fields for easier filtering in Grafana/Loki
-		l.Error("failed to increment post view", "error", err)
-		return fmt.Errorf("database error: %w", err)
+		l.Error("failed to list archives", "error", err)
+		return nil, err
 	}
 
-	// 3. Optional: Trace successful high-value operations at Debug level
-	l.Debug("post view incremented successfully")
+	archives := make([]Archive, len(rows))
+	for i, row := range rows {
+		var locations []Location
+		if len(row.Archive.Locations) > 0 {
+			if err := json.Unmarshal(row.Archive.Locations, &locations); err != nil {
+				l.Warn("failed to unmarshal locations", "archive_id", row.Archive.ID, "error", err)
+			}
+		}
+		archives[i] = Archive{
+			ID:        row.Archive.ID,
+			Name:      row.Archive.Name,
+			Locations: locations,
+		}
+	}
+	return archives, nil
+}
 
+func (s *service) IncrementView(ctx context.Context, params database.IncrementPostStatsParams) error {
+	l := s.logger.With("op", "IncrementView", "post_id", params.PostID)
+
+	if err := s.queries.IncrementPostStats(ctx, params); err != nil {
+		l.Error("failed to increment view count", "error", err)
+		return err
+	}
+
+	l.Debug("view count incremented")
 	return nil
+}
+
+func (s *service) ListRelated(ctx context.Context, params database.ListRelatedPostsParams) ([]Post, error) {
+	l := s.logger.With("op", "ListRelated", "category_id", params.CategoryID)
+
+	rows, err := s.queries.ListRelatedPosts(ctx, params)
+	if err != nil {
+		l.Error("failed to fetch related posts", "error", err)
+		return nil, err
+	}
+
+	items := make([]Post, len(rows))
+	for i, row := range rows {
+		items[i] = *s.mapRowToPost(row.Blogpost, &row.BlogpostStat, &row.Category)
+	}
+	return items, nil
 }
 
 func NewService(querier *database.Queries, logger *slog.Logger) Service {
@@ -54,103 +92,85 @@ func NewService(querier *database.Queries, logger *slog.Logger) Service {
 	}
 }
 
-func (s *service) ListArchives(ctx context.Context, postId uuid.UUID) ([]Archive, error) {
-	l := s.logger.With("post_id", postId, "op", "ListArchives")
-
-	rows, err := s.queries.ListArchivesByPostID(ctx, postId)
-	if err != nil {
-		l.Error("failed to list archives", "error", err)
-		return nil, fmt.Errorf("list archives: %w", err)
-	}
-
-	archives := make([]Archive, len(rows))
-	for i, row := range rows {
-		var locations []Location
-		if len(row.Archive.Locations) > 0 {
-			if err := json.Unmarshal(row.Archive.Locations, &locations); err != nil {
-				// We log the specific archive ID that failed, but don't break the whole loop
-				l.Error("failed to unmarshal archive locations",
-					"archive_id", row.Archive.ID,
-					"error", err)
-			}
-		}
-
-		archives[i] = Archive{
-			ID:        row.Archive.ID,
-			Name:      row.Archive.Name,
-			SizeBytes: row.Archive.SizeBytes,
-			Pages:     row.Archive.Pages,
-			Locations: locations,
-		}
-	}
-
-	l.Debug("archives retrieved", "count", len(archives))
-	return archives, nil
-}
-
-func (s *service) GetByID(ctx context.Context, id uuid.UUID) (*Post, error) {
-	l := s.logger.With("id", id, "op", "GetByID")
-
-	row, err := s.queries.GetPostByID(ctx, id)
-	if err != nil {
-		l.Error("blog post not found in database", "error", err)
-		return nil, fmt.Errorf("get post: %w", err)
-	}
-
-	return s.mapRowToPost(row.Blogpost, row.BlogpostStat, row.Category), nil
-}
-
-func (s *service) List(ctx context.Context, limit, offset int32) ([]Post, error) {
-	l := s.logger.With("op", "List", "limit", limit, "offset", offset)
-
-	rows, err := s.queries.ListPosts(ctx, database.ListPostsParams{
-		Limit:  limit,
-		Offset: offset,
-	})
-	if err != nil {
-		l.Error("failed to fetch posts page", "error", err)
-		return nil, fmt.Errorf("list posts: %w", err)
-	}
-
-	items := make([]Post, 0, len(rows))
-	for _, row := range rows {
-		items = append(items, *s.mapRowToPost(row.Blogpost, row.BlogpostStat, row.Category))
-	}
-
-	l.Info("posts batch retrieved", "count", len(items))
-	return items, nil
-}
-
-func (s *service) Save(ctx context.Context, params database.UpsertBlogPostParams) (uuid.UUID, error) {
+func (s *service) Save(ctx context.Context, params database.UpsertPostParams) (uuid.UUID, error) {
 	l := s.logger.With("op", "Save", "title", params.Title)
-
-	updatedPost, err := s.queries.UpsertBlogPost(ctx, params)
+	updated, err := s.queries.UpsertPost(ctx, params)
 	if err != nil {
-		l.Error("database upsert failed", "error", err)
-		return uuid.Nil, fmt.Errorf("save post: %w", err)
+		l.Error("failed to upsert post", "error", err)
+		return uuid.Nil, err
 	}
-
-	// Cleaner UUID conversion from pgtype
-	resID, _ := uuid.Parse(updatedPost.ID.String())
-
-	l.Info("blog post persistence successful", "id", resID)
-	return resID, nil
+	l.Info("post persisted", "id", updated.String())
+	return updated, nil
 }
 
 func (s *service) Delete(ctx context.Context, id uuid.UUID) error {
-	l := s.logger.With("id", id, "op", "Delete")
-
+	l := s.logger.With("op", "Delete", "id", id)
 	if err := s.queries.DeletePost(ctx, id); err != nil {
-		l.Error("failed to remove post from database", "error", err)
-		return fmt.Errorf("delete post: %w", err)
+		l.Error("failed to delete post", "error", err)
+		return err
 	}
-
-	l.Warn("blog post permanently deleted")
+	l.Warn("post deleted")
 	return nil
 }
 
-func (s *service) mapRowToPost(post database.Blogpost, stats database.BlogpostStat, category database.Category) *Post {
-	// We create a sub-logger for the mapping to track potential JSON corruption
+func (s *service) Get(ctx context.Context, id uuid.UUID) (*Post, error) {
+	l := s.logger.With("op", "Get", "id", id)
+	row, err := s.queries.GetPost(ctx, id)
+	if err != nil {
+		l.Error("failed to fetch post", "error", err)
+		return nil, err
+	}
+	return s.mapRowToPost(row.Blogpost, &row.BlogpostStat, &row.Category), nil
+}
+
+func (s *service) List(ctx context.Context, limit, offset int32) ([]Post, int64, error) {
+	l := s.logger.With("op", "List", "limit", limit, "offset", offset)
+	rows, err := s.queries.ListPosts(ctx, database.ListPostsParams{Limit: limit, Offset: offset})
+	if err != nil {
+		l.Error("failed to list posts", "error", err)
+		return nil, 0, err
+	}
+
+	count, _ := s.queries.CountPosts(ctx, database.CountPostsParams{SearchQuery: ""})
+	l.Info("posts retrieved", "count", len(rows), "total", count)
+
+	items := make([]Post, len(rows))
+	for i, row := range rows {
+		items[i] = *s.mapRowToPost(row.Blogpost, &row.BlogpostStat, &row.Category)
+	}
+	return items, count, nil
+}
+
+func (s *service) Search(ctx context.Context, params database.SearchPostsParams) ([]Post, int64, error) {
+	l := s.logger.With("op", "Search", "query", params.SearchQuery, "tags_len", len(params.Tags))
+
+	rows, err := s.queries.SearchPosts(ctx, params)
+	if err != nil {
+		l.Error("search query failed", "error", err)
+		return nil, 0, err
+	}
+
+	count, _ := s.queries.CountPosts(ctx, database.CountPostsParams{
+		SearchQuery:       params.SearchQuery,
+		SearchTitle:       params.SearchTitle,
+		SearchAuthor:      params.SearchAuthor,
+		SearchDescription: params.SearchDescription,
+		SearchCategory:    params.SearchCategory,
+		Tags:              params.Tags,
+		MatchAll:          params.MatchAll,
+	})
+
+	l.Debug("search completed", "results", len(rows), "total", count)
+
+	items := make([]Post, len(rows))
+	for i, row := range rows {
+		items[i] = *s.mapRowToPost(row.Blogpost, &row.BlogpostStat, &row.Category)
+	}
+	return items, count, nil
+}
+
+func (s *service) mapRowToPost(post database.Blogpost, stats *database.BlogpostStat, category *database.Category) *Post {
+
 	l := s.logger.With("post_id", post.ID, "op", "mapRowToPost")
 
 	var cover Image
@@ -189,6 +209,7 @@ func (s *service) mapRowToPost(post database.Blogpost, stats database.BlogpostSt
 		AnonViews:    stats.AnonViews,
 		Downloads:    stats.Downloads,
 		Comments:     stats.Comments,
+		CategoryID:   category.ID.String(),
 	}
 }
 

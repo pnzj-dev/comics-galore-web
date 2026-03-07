@@ -11,6 +11,10 @@ templ CommentScript() {
             newComment: {content: ''},
             replyForms: {},
             eventSource: null,
+            postId: postId,
+            userId: userId,
+            avatarId: avatarId,
+            username: username,
 
             init() {
                 this.refreshComments().then(() => {
@@ -19,7 +23,7 @@ templ CommentScript() {
             },
 
             connectSSE() {
-                this.eventSource = new EventSource(`/api/v1/events/comment/${postId}`);
+                this.eventSource = new EventSource(`/api/v1/events/comment/${this.postId}`);
                 this.eventSource.addEventListener('comment', (event) => {
                     const newComment = JSON.parse(event.data);
                     this.addCommentToTree(newComment);
@@ -27,7 +31,7 @@ templ CommentScript() {
             },
 
             async refreshComments() {
-                const res = await fetch(`/api/v1/comment/list/${postId}`);
+                const res = await fetch(`/api/v1/comment/list/${this.postId}`);
                 if (res.ok) {
                     this.comments = await res.json();
                 }
@@ -36,15 +40,15 @@ templ CommentScript() {
             async addComment(parentId) {
                 const data = parentId ? this.replyForms[parentId] : this.newComment;
                 const req = {
-                    postId: postId,
-                    userId: userId,
+                    postId: this.postId,
+                    userId: this.userId,
+                    username: this.username,
+                    avatarId: this.avatarId,
+                    content: data.content,
                     parentId: parentId,
-                    username: username,
-                    avatarId: avatarId,
-                    content: data.content
                 };
 
-                const res = await fetch(`/api/v1/comment/${postId}`, {
+                const res = await fetch(`/api/v1/comment/${this.postId}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(req)
@@ -68,7 +72,8 @@ templ CommentScript() {
             },
 
             avatarUrl(id) {
-                return id != null && id !== "" ? `${id}` : '/assets/images/default-avatar-1.svg'
+                // return id != null && id !== "" ? `${id}` : '/assets/images/default-avatar-1.svg'
+                return id != null && id !== "" ? `${id}` : `https://ui-avatars.com/api/?name=${this.username}`
             },
 
             addCommentToTree(newComment) {

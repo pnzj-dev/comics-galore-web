@@ -1,10 +1,10 @@
 package templates
 
-import "comics-galore-web/cmd/web/header"
+//import "comics-galore-web/cmd/web/header"
 import "comics-galore-web/cmd/web/footer"
 import "comics-galore-web/cmd/web/scripts"
 
-templ BaseLayout(headerButton templ.Component, contents templ.Component) {
+templ BaseLayout(header templ.Component, contents templ.Component) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -21,7 +21,7 @@ templ BaseLayout(headerButton templ.Component, contents templ.Component) {
 </head>
 <body x-data="globalUtils()" class="flex flex-col min-h-screen bg-gray-50">
 <div class="flex flex-col flex-grow w-full">
-    @header.Header(headerButton)
+    @header
     <main class="flex-grow items-center justify-between w-full max-w-7xl mx-auto py-4">
         @contents
     </main>

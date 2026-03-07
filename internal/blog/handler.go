@@ -48,9 +48,9 @@ func NewHandler(cfg config.Service, svc Service) Handler {
 }
 
 func (h *handler) RegisterRoutes(app *fiber.App) {
-	group := app.Group("/api/v1/posts")
+	group := app.Group("/api/v1/post")
 
-	group.Get("/", h.ListPosts)
+	group.Get("/list", h.ListPosts)
 	group.Post("/", h.SavePost) // Added POST route which was missing registration
 
 	// Middleware chain: Limit -> Track -> Handler
@@ -66,7 +66,7 @@ func (h *handler) GetPostDetail(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid post id format"})
 	}
 
-	post, err := h.svc.GetByID(c.Context(), id)
+	post, err := h.svc.Get(c.Context(), id)
 	if err != nil {
 		l.Error("post lookup failed", "error", err)
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "post not found"})
@@ -76,7 +76,7 @@ func (h *handler) GetPostDetail(c fiber.Ctx) error {
 }
 
 func (h *handler) ListPosts(c fiber.Ctx) error {
-	// BUG FIX: Standardize default pagination to prevent OOM
+
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
 
@@ -86,18 +86,21 @@ func (h *handler) ListPosts(c fiber.Ctx) error {
 
 	l := h.logger.With("op", "ListPosts", "limit", limit, "offset", offset)
 
-	posts, err := h.svc.List(c.Context(), int32(limit), int32(offset))
+	posts, total, err := h.svc.List(c.Context(), int32(limit), int32(offset))
 	if err != nil {
 		l.Error("failed to list posts", "error", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to retrieve posts"})
 	}
 
-	return c.JSON(posts)
+	return c.JSON(fiber.Map{
+		"posts": posts,
+		"total": total,
+	})
 }
 
 func (h *handler) SavePost(c fiber.Ctx) error {
 	l := h.logger.With("op", "SavePost")
-	payload := new(database.UpsertBlogPostParams)
+	payload := new(database.UpsertPostParams)
 
 	if err := c.Bind().Body(payload); err != nil {
 		l.Warn("invalid request payload", "error", err)

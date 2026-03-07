@@ -1,15 +1,10 @@
 package modal
 
 import "comics-galore-web/internal/auth"
-import "comics-galore-web/internal/view"
 
-
-templ ProfileModal(isOpenState string, closeAction string, user *auth.Claims) {
-@Modal("profile-modal","Profile",isOpenState,closeAction,profileModalContent(user,&view.UserProfile{},""),WithWidth("sm:w-full"),WithMaxWidth("sm:max-w-5xl"),WithMaxHeight("max-h-[98vh]"),WithMinHeight("min-h-[66vh]"))
-}
-
-templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstileKey string) {
-<div x-data="profileModal()">
+templ ModalProfile(user *auth.Claims, turnstileKey string) {
+<div x-data="modalProfile()" x-on:modal-open.window="if ($event.detail === 'profile') activeTab = 'profile'"
+     class="w-full">
     <div class="border-b border-gray-200 dark:border-gray-700">
         <nav class="-mb-px flex space-x-8" aria-label="Tabs">
             <button @click="activeTab = 'profile'"
@@ -129,16 +124,16 @@ templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstil
         }
     }
 
-    function profileModal() {
+    function modalProfile() {
         return {
             activeTab: 'profile',
             name: {{ user.Name }},
             passwords: {current: '', new: '', confirm: ''},
             stats: {
-                uploadedFilesCount: {{ profile.UploadedFilesCount }},
-                favoriteBlogsCount: {{ profile.FavoriteBlogsCount }},
-                likesCount: {{ profile.LikesCount }},
-                dislikesCount: {{ profile.DislikesCount }},
+                uploadedFilesCount: 0,
+                favoriteBlogsCount: 0,
+                likesCount: 0,
+                dislikesCount: 0,
             },
             //TODO : complete
             avatarPreviewUrl: {{ user.AvatarUrl() }},
@@ -173,7 +168,7 @@ templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstil
 
                 try {
                     const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/api/v1/users/avatar', true);
+                    xhr.open('POST', '/api/v1/user/avatar', true);
                     // Add JWT header if needed: xhr.setRequestHeader('Authorization', 'Bearer ' + your_jwt);
 
                     xhr.upload.onprogress = (event) => {
@@ -202,7 +197,7 @@ templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstil
 
             async updateName() {
                 this.isSavingName = true;
-                await this.submitForm('/api/v1/users/profile', {name: this.name}, 'isSavingName', 'Name updated successfully.');
+                await this.submitForm('/api/v1/user/profile', {name: this.name}, 'isSavingName', 'Name updated successfully.');
             },
 
             async changePassword(form) {
@@ -212,7 +207,7 @@ templ profileModalContent(user *auth.Claims, profile *view.UserProfile, turnstil
                 }
                 this.isChangingPassword = true;
                 const payload = {...this.passwords, 'cf-turnstile-response': this.passwordTurnstileToken};
-                await this.submitForm('/api/v1/users/password', payload, 'isChangingPassword', 'Password changed successfully.');
+                await this.submitForm('/api/v1/user/password', payload, 'isChangingPassword', 'Password changed successfully.');
                 this.passwords = {current: '', new: '', confirm: ''};
                 if (window.turnstile) window.turnstile.reset(form.querySelector('.cf-turnstile'));
                 this.passwordTurnstileToken = null;

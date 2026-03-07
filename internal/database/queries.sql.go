@@ -29,6 +29,47 @@ func (q *Queries) AddParticipant(ctx context.Context, arg AddParticipantParams) 
 	return err
 }
 
+const countPosts = `-- name: CountPosts :one
+SELECT count(*)
+FROM blogposts b
+         JOIN categories c ON b.category_id = c.id
+WHERE ($1::text = '' OR (
+    ($2::bool AND b.title ILIKE '%' || $1::text || '%') OR
+    ($3::bool AND b.author_name ILIKE '%' || $1::text || '%') OR
+    ($4::bool AND b.description ILIKE '%' || $1::text || '%') OR
+    ($5::bool AND c.name ILIKE '%' || $1::text || '%')
+    ))
+  AND (cardinality($6::text[]) = 0 OR
+       ($7::bool AND b.tags @> $6::text[]) OR
+       (NOT $7::bool AND b.tags && $6::text[])
+    )
+`
+
+type CountPostsParams struct {
+	SearchQuery       string   `json:"search_query"`
+	SearchTitle       bool     `json:"search_title"`
+	SearchAuthor      bool     `json:"search_author"`
+	SearchDescription bool     `json:"search_description"`
+	SearchCategory    bool     `json:"search_category"`
+	Tags              []string `json:"tags"`
+	MatchAll          bool     `json:"match_all"`
+}
+
+func (q *Queries) CountPosts(ctx context.Context, arg CountPostsParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countPosts,
+		arg.SearchQuery,
+		arg.SearchTitle,
+		arg.SearchAuthor,
+		arg.SearchDescription,
+		arg.SearchCategory,
+		arg.Tags,
+		arg.MatchAll,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createComment = `-- name: CreateComment :one
 
 INSERT INTO comments (post_id,
@@ -137,21 +178,22 @@ func (q *Queries) DeletePost(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
-const getArchiveByID = `-- name: GetArchiveByID :one
+const getArchive = `-- name: GetArchive :one
 SELECT a.id, a.post_id, a.name, a.size_bytes, a.pages, a.locations, a.updated_at, a.created_at, s.archive_id, s.downloads
 FROM archives a
          LEFT JOIN archive_stats s ON a.id = s.archive_id
 WHERE a.id = $1
 `
 
-type GetArchiveByIDRow struct {
+type GetArchiveRow struct {
 	Archive     Archive     `json:"archive"`
 	ArchiveStat ArchiveStat `json:"archive_stat"`
 }
 
-func (q *Queries) GetArchiveByID(ctx context.Context, id uuid.UUID) (GetArchiveByIDRow, error) {
-	row := q.db.QueryRow(ctx, getArchiveByID, id)
-	var i GetArchiveByIDRow
+// *** ARCHIVE QUERIES ***
+func (q *Queries) GetArchive(ctx context.Context, id uuid.UUID) (GetArchiveRow, error) {
+	row := q.db.QueryRow(ctx, getArchive, id)
+	var i GetArchiveRow
 	err := row.Scan(
 		&i.Archive.ID,
 		&i.Archive.PostID,
@@ -380,68 +422,23 @@ func (q *Queries) GetOrCreateDirectConversation(ctx context.Context, arg GetOrCr
 	return conversation_id, err
 }
 
-const getPostArchives = `-- name: GetPostArchives :many
-SELECT a.id, a.post_id, a.name, a.size_bytes, a.pages, a.locations, a.updated_at, a.created_at, s.archive_id, s.downloads
-FROM archives a
-         JOIN archive_stats s ON a.id = s.archive_id
-WHERE a.post_id = $1
-`
-
-type GetPostArchivesRow struct {
-	Archive     Archive     `json:"archive"`
-	ArchiveStat ArchiveStat `json:"archive_stat"`
-}
-
-func (q *Queries) GetPostArchives(ctx context.Context, postID uuid.UUID) ([]GetPostArchivesRow, error) {
-	rows, err := q.db.Query(ctx, getPostArchives, postID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []GetPostArchivesRow{}
-	for rows.Next() {
-		var i GetPostArchivesRow
-		if err := rows.Scan(
-			&i.Archive.ID,
-			&i.Archive.PostID,
-			&i.Archive.Name,
-			&i.Archive.SizeBytes,
-			&i.Archive.Pages,
-			&i.Archive.Locations,
-			&i.Archive.UpdatedAt,
-			&i.Archive.CreatedAt,
-			&i.ArchiveStat.ArchiveID,
-			&i.ArchiveStat.Downloads,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getPostByID = `-- name: GetPostByID :one
-SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at,
-       c.id, c.slug, c.display_name, c.created_at,
-       s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
+const getPost = `-- name: GetPost :one
+SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
          LEFT JOIN blogpost_stats s ON b.id = s.post_id
 WHERE b.id = $1
 `
 
-type GetPostByIDRow struct {
+type GetPostRow struct {
 	Blogpost     Blogpost     `json:"blogpost"`
 	Category     Category     `json:"category"`
 	BlogpostStat BlogpostStat `json:"blogpost_stat"`
 }
 
-func (q *Queries) GetPostByID(ctx context.Context, id uuid.UUID) (GetPostByIDRow, error) {
-	row := q.db.QueryRow(ctx, getPostByID, id)
-	var i GetPostByIDRow
+func (q *Queries) GetPost(ctx context.Context, id uuid.UUID) (GetPostRow, error) {
+	row := q.db.QueryRow(ctx, getPost, id)
+	var i GetPostRow
 	err := row.Scan(
 		&i.Blogpost.ID,
 		&i.Blogpost.Title,
@@ -523,34 +520,40 @@ func (q *Queries) GetUserReaction(ctx context.Context, arg GetUserReactionParams
 	return reaction_type, err
 }
 
-const incrementDownloadCount = `-- name: IncrementDownloadCount :exec
+const incrementArchiveDownloads = `-- name: IncrementArchiveDownloads :exec
 INSERT INTO archive_stats (archive_id, downloads)
-VALUES ($1, 1)
+VALUES ($1, $2)
 ON CONFLICT (archive_id)
-    DO UPDATE SET downloads = archive_stats.downloads + 1
+    DO UPDATE SET downloads = archive_stats.downloads + EXCLUDED.downloads
 `
 
-// Updates the separate stats table to avoid locking the main archive table.
-func (q *Queries) IncrementDownloadCount(ctx context.Context, archiveID uuid.UUID) error {
-	_, err := q.db.Exec(ctx, incrementDownloadCount, archiveID)
+type IncrementArchiveDownloadsParams struct {
+	ArchiveID uuid.UUID `json:"archive_id"`
+	Downloads int64     `json:"downloads"`
+}
+
+func (q *Queries) IncrementArchiveDownloads(ctx context.Context, arg IncrementArchiveDownloadsParams) error {
+	_, err := q.db.Exec(ctx, incrementArchiveDownloads, arg.ArchiveID, arg.Downloads)
 	return err
 }
 
-const incrementPostView = `-- name: IncrementPostView :exec
+const incrementPostStats = `-- name: IncrementPostStats :exec
 INSERT INTO blogpost_stats (post_id, auth_views, anon_views)
 VALUES ($1, $2, $3)
-ON CONFLICT (post_id) DO UPDATE SET auth_views = blogpost_stats.auth_views + EXCLUDED.auth_views,
-                                    anon_views = blogpost_stats.anon_views + EXCLUDED.anon_views
+ON CONFLICT (post_id)
+    DO UPDATE SET auth_views = blogpost_stats.auth_views + EXCLUDED.auth_views,
+                  anon_views = blogpost_stats.anon_views + EXCLUDED.anon_views
 `
 
-type IncrementPostViewParams struct {
+type IncrementPostStatsParams struct {
 	PostID    uuid.UUID `json:"post_id"`
 	AuthViews int64     `json:"auth_views"`
 	AnonViews int64     `json:"anon_views"`
 }
 
-func (q *Queries) IncrementPostView(ctx context.Context, arg IncrementPostViewParams) error {
-	_, err := q.db.Exec(ctx, incrementPostView, arg.PostID, arg.AuthViews, arg.AnonViews)
+// *** STATISTICS & COUNTERS ***
+func (q *Queries) IncrementPostStats(ctx context.Context, arg IncrementPostStatsParams) error {
+	_, err := q.db.Exec(ctx, incrementPostStats, arg.PostID, arg.AuthViews, arg.AnonViews)
 	return err
 }
 
@@ -625,9 +628,7 @@ func (q *Queries) ListArchivesByPostID(ctx context.Context, postID uuid.UUID) ([
 }
 
 const listPosts = `-- name: ListPosts :many
-SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at,
-       c.id, c.slug, c.display_name, c.created_at,
-       s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
+SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
          LEFT JOIN blogpost_stats s ON b.id = s.post_id
@@ -692,117 +693,43 @@ func (q *Queries) ListPosts(ctx context.Context, arg ListPostsParams) ([]ListPos
 	return items, nil
 }
 
-const listPostsByTags = `-- name: ListPostsByTags :many
+const listRelatedPosts = `-- name: ListRelatedPosts :many
+WITH random_posts AS (SELECT id
+                      FROM blogposts
+                      WHERE (blogposts.category_id = $1
+                          OR blogposts.tags && $2::text[])
+                        AND blogposts.id != $3
+                      ORDER BY RANDOM()
+                      LIMIT 6)
 SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
          LEFT JOIN blogpost_stats s ON b.id = s.post_id
-WHERE b.tags @> $1::TEXT[]
+WHERE b.id IN (SELECT id FROM random_posts)
 ORDER BY b.created_at DESC
-LIMIT $2 OFFSET $3
 `
 
-type ListPostsByTagsParams struct {
-	Column1 []string `json:"column_1"`
-	Limit   int32    `json:"limit"`
-	Offset  int32    `json:"offset"`
+type ListRelatedPostsParams struct {
+	CategoryID uuid.UUID `json:"category_id"`
+	Tags       []string  `json:"tags"`
+	ID         uuid.UUID `json:"id"`
 }
 
-type ListPostsByTagsRow struct {
+type ListRelatedPostsRow struct {
 	Blogpost     Blogpost     `json:"blogpost"`
 	Category     Category     `json:"category"`
 	BlogpostStat BlogpostStat `json:"blogpost_stat"`
 }
 
-func (q *Queries) ListPostsByTags(ctx context.Context, arg ListPostsByTagsParams) ([]ListPostsByTagsRow, error) {
-	rows, err := q.db.Query(ctx, listPostsByTags, arg.Column1, arg.Limit, arg.Offset)
+func (q *Queries) ListRelatedPosts(ctx context.Context, arg ListRelatedPostsParams) ([]ListRelatedPostsRow, error) {
+	rows, err := q.db.Query(ctx, listRelatedPosts, arg.CategoryID, arg.Tags, arg.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListPostsByTagsRow{}
+	items := []ListRelatedPostsRow{}
 	for rows.Next() {
-		var i ListPostsByTagsRow
-		if err := rows.Scan(
-			&i.Blogpost.ID,
-			&i.Blogpost.Title,
-			&i.Blogpost.AuthorName,
-			&i.Blogpost.UploaderID,
-			&i.Blogpost.CategoryID,
-			&i.Blogpost.Description,
-			&i.Blogpost.Tags,
-			&i.Blogpost.Cover,
-			&i.Blogpost.Previews,
-			&i.Blogpost.Rating,
-			&i.Blogpost.LanguageCode,
-			&i.Blogpost.Pages,
-			&i.Blogpost.SizeBytes,
-			&i.Blogpost.MimeTypes,
-			&i.Blogpost.CreatedAt,
-			&i.Blogpost.UpdatedAt,
-			&i.Category.ID,
-			&i.Category.Slug,
-			&i.Category.DisplayName,
-			&i.Category.CreatedAt,
-			&i.BlogpostStat.PostID,
-			&i.BlogpostStat.Comments,
-			&i.BlogpostStat.Downloads,
-			&i.BlogpostStat.AuthViews,
-			&i.BlogpostStat.AnonViews,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listPostsByTagsFlexible = `-- name: ListPostsByTagsFlexible :many
-SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
-FROM blogposts b
-         JOIN categories c ON b.category_id = c.id
-         LEFT JOIN blogpost_stats s ON b.id = s.post_id
-WHERE (
-          -- If match_all is true, use "Contains" (@>)
-          ($1::boolean = true AND b.tags @> $2::text[])
-              OR
-              -- If match_all is false, use "Overlaps" (&&)
-          ($1::boolean = false AND b.tags && $2::text[])
-          )
-ORDER BY b.created_at DESC
-LIMIT $4 OFFSET $3
-`
-
-type ListPostsByTagsFlexibleParams struct {
-	MatchAll  bool     `json:"match_all"`
-	Tags      []string `json:"tags"`
-	OffsetVal int32    `json:"offset_val"`
-	LimitVal  int32    `json:"limit_val"`
-}
-
-type ListPostsByTagsFlexibleRow struct {
-	Blogpost     Blogpost     `json:"blogpost"`
-	Category     Category     `json:"category"`
-	BlogpostStat BlogpostStat `json:"blogpost_stat"`
-}
-
-func (q *Queries) ListPostsByTagsFlexible(ctx context.Context, arg ListPostsByTagsFlexibleParams) ([]ListPostsByTagsFlexibleRow, error) {
-	rows, err := q.db.Query(ctx, listPostsByTagsFlexible,
-		arg.MatchAll,
-		arg.Tags,
-		arg.OffsetVal,
-		arg.LimitVal,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListPostsByTagsFlexibleRow{}
-	for rows.Next() {
-		var i ListPostsByTagsFlexibleRow
+		var i ListRelatedPostsRow
 		if err := rows.Scan(
 			&i.Blogpost.ID,
 			&i.Blogpost.Title,
@@ -922,32 +849,30 @@ SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
          LEFT JOIN blogpost_stats s ON b.id = s.post_id
-WHERE
-  -- 1. Optional Category Filter
-    ($1::uuid IS NULL OR b.category_id = $1)
-  AND
-  -- 2. Flexible Tag Filter
-    (
-        ($2::boolean = true AND b.tags @> $3::text[])
-            OR
-        ($2::boolean = false AND b.tags && $3::text[])
-            OR
-        (cardinality($3::text[]) = 0) -- Ignore if no tags provided
-        )
-  AND
-  -- 3. Minimum Rating Filter
-    b.rating >= $4::numeric
+WHERE ($1::text = '' OR (
+    ($2::bool AND b.title ILIKE '%' || $1::text || '%') OR
+    ($3::bool AND b.author_name ILIKE '%' || $1::text || '%') OR
+    ($4::bool AND b.description ILIKE '%' || $1::text || '%') OR
+    ($5::bool AND c.display_name ILIKE '%' || $1::text || '%')
+    ))
+  AND (cardinality($6::text[]) = 0 OR
+       ($7::bool AND b.tags @> $6::text[]) OR
+       (NOT $7::bool AND b.tags && $6::text[])
+    )
 ORDER BY b.created_at DESC
-LIMIT $6 OFFSET $5
+LIMIT $9 OFFSET $8
 `
 
 type SearchPostsParams struct {
-	CategoryID uuid.NullUUID  `json:"category_id"`
-	MatchAll   bool           `json:"match_all"`
-	Tags       []string       `json:"tags"`
-	MinRating  pgtype.Numeric `json:"min_rating"`
-	OffsetVal  int32          `json:"offset_val"`
-	LimitVal   int32          `json:"limit_val"`
+	SearchQuery       string   `json:"search_query"`
+	SearchTitle       bool     `json:"search_title"`
+	SearchAuthor      bool     `json:"search_author"`
+	SearchDescription bool     `json:"search_description"`
+	SearchCategory    bool     `json:"search_category"`
+	Tags              []string `json:"tags"`
+	MatchAll          bool     `json:"match_all"`
+	Offset            int32    `json:"offset"`
+	Limit             int32    `json:"limit"`
 }
 
 type SearchPostsRow struct {
@@ -958,12 +883,15 @@ type SearchPostsRow struct {
 
 func (q *Queries) SearchPosts(ctx context.Context, arg SearchPostsParams) ([]SearchPostsRow, error) {
 	rows, err := q.db.Query(ctx, searchPosts,
-		arg.CategoryID,
-		arg.MatchAll,
+		arg.SearchQuery,
+		arg.SearchTitle,
+		arg.SearchAuthor,
+		arg.SearchDescription,
+		arg.SearchCategory,
 		arg.Tags,
-		arg.MinRating,
-		arg.OffsetVal,
-		arg.LimitVal,
+		arg.MatchAll,
+		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -1009,21 +937,30 @@ func (q *Queries) SearchPosts(ctx context.Context, arg SearchPostsParams) ([]Sea
 	return items, nil
 }
 
-const updateArchiveDownloads = `-- name: UpdateArchiveDownloads :exec
-INSERT INTO archive_stats (archive_id, downloads)
-VALUES ($1, $2)
-ON CONFLICT (archive_id) DO UPDATE
-    SET downloads = archive_stats.downloads + EXCLUDED.downloads
+const socialEngagementUpdate = `-- name: SocialEngagementUpdate :exec
+INSERT INTO social_engagement (date, comments, messages, reactions)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (date)
+    DO UPDATE SET comments   = EXCLUDED.comments,
+                  messages   = EXCLUDED.messages,
+                  reactions  = EXCLUDED.reactions,
+                  updated_at = NOW()
 `
 
-type UpdateArchiveDownloadsParams struct {
-	ArchiveID uuid.UUID `json:"archive_id"`
-	Downloads int64     `json:"downloads"`
+type SocialEngagementUpdateParams struct {
+	Date      pgtype.Date `json:"date"`
+	Comments  int32       `json:"comments"`
+	Messages  int32       `json:"messages"`
+	Reactions int32       `json:"reactions"`
 }
 
-// This handles both increment (amount = 1) and decrement (amount = -1)
-func (q *Queries) UpdateArchiveDownloads(ctx context.Context, arg UpdateArchiveDownloadsParams) error {
-	_, err := q.db.Exec(ctx, updateArchiveDownloads, arg.ArchiveID, arg.Downloads)
+func (q *Queries) SocialEngagementUpdate(ctx context.Context, arg SocialEngagementUpdateParams) error {
+	_, err := q.db.Exec(ctx, socialEngagementUpdate,
+		arg.Date,
+		arg.Comments,
+		arg.Messages,
+		arg.Reactions,
+	)
 	return err
 }
 
@@ -1074,24 +1011,16 @@ func (q *Queries) UpdateLastRead(ctx context.Context, arg UpdateLastReadParams) 
 
 const upsertArchive = `-- name: UpsertArchive :one
 WITH upserted_archive AS (
-    INSERT INTO archives (
-                          id, post_id, name, size_bytes, pages, locations, updated_at
-        ) VALUES (COALESCE($6::uuid, uuid_generate_v7()),
-                  $1, $2, $3, $4, $5, NOW())
-        ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            size_bytes = EXCLUDED.size_bytes,
-            pages = EXCLUDED.pages,
-            locations = EXCLUDED.locations,
-            updated_at = NOW()
-        RETURNING id, post_id, name, size_bytes, pages, locations, updated_at, created_at),
-     stats_init AS (
-         -- Ensure a stats row exists for the new/updated archive
-         INSERT INTO archive_stats (archive_id, downloads)
-             SELECT id, 0 FROM upserted_archive
-             ON CONFLICT (archive_id) DO NOTHING)
-SELECT u.id
-FROM upserted_archive u
+    INSERT INTO archives (id, post_id, name, size_bytes, pages, locations, updated_at)
+        VALUES (COALESCE($6::uuid, uuid_generate_v7()), $1, $2, $3, $4, $5, NOW())
+        ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, size_bytes = EXCLUDED.size_bytes, pages = EXCLUDED.pages, locations = EXCLUDED.locations, updated_at = NOW()
+        RETURNING id, post_id, name, size_bytes, pages, locations, updated_at, created_at)
+INSERT
+INTO archive_stats (archive_id, downloads)
+SELECT id, 0
+FROM upserted_archive
+ON CONFLICT (archive_id) DO NOTHING
+RETURNING (SELECT id FROM upserted_archive)
 `
 
 type UpsertArchiveParams struct {
@@ -1117,22 +1046,10 @@ func (q *Queries) UpsertArchive(ctx context.Context, arg UpsertArchiveParams) (u
 	return id, err
 }
 
-const upsertBlogPost = `-- name: UpsertBlogPost :one
-INSERT INTO blogposts (id,
-                       title,
-                       author_name,
-                       uploader_id,
-                       category_id,
-                       description,
-                       tags,
-                       cover,
-                       previews,
-                       rating,
-                       language_code,
-                       pages,
-                       size_bytes,
-                       mime_types,
-                       updated_at)
+const upsertPost = `-- name: UpsertPost :one
+INSERT INTO blogposts (id, title, author_name, uploader_id, category_id, description,
+                       tags, cover, previews, rating, language_code, pages,
+                       size_bytes, mime_types, updated_at)
 VALUES (COALESCE($14::uuid, uuid_generate_v7()),
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW())
 ON CONFLICT (id) DO UPDATE SET title         = EXCLUDED.title,
@@ -1147,10 +1064,10 @@ ON CONFLICT (id) DO UPDATE SET title         = EXCLUDED.title,
                                size_bytes    = EXCLUDED.size_bytes,
                                mime_types    = EXCLUDED.mime_types,
                                updated_at    = NOW()
-RETURNING id, title, author_name, uploader_id, category_id, description, tags, cover, previews, rating, language_code, pages, size_bytes, mime_types, created_at, updated_at
+RETURNING id
 `
 
-type UpsertBlogPostParams struct {
+type UpsertPostParams struct {
 	Title        string         `json:"title"`
 	AuthorName   string         `json:"author_name"`
 	UploaderID   string         `json:"uploader_id"`
@@ -1167,8 +1084,8 @@ type UpsertBlogPostParams struct {
 	ID           uuid.NullUUID  `json:"id"`
 }
 
-func (q *Queries) UpsertBlogPost(ctx context.Context, arg UpsertBlogPostParams) (Blogpost, error) {
-	row := q.db.QueryRow(ctx, upsertBlogPost,
+func (q *Queries) UpsertPost(ctx context.Context, arg UpsertPostParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, upsertPost,
 		arg.Title,
 		arg.AuthorName,
 		arg.UploaderID,
@@ -1184,26 +1101,9 @@ func (q *Queries) UpsertBlogPost(ctx context.Context, arg UpsertBlogPostParams) 
 		arg.MimeTypes,
 		arg.ID,
 	)
-	var i Blogpost
-	err := row.Scan(
-		&i.ID,
-		&i.Title,
-		&i.AuthorName,
-		&i.UploaderID,
-		&i.CategoryID,
-		&i.Description,
-		&i.Tags,
-		&i.Cover,
-		&i.Previews,
-		&i.Rating,
-		&i.LanguageCode,
-		&i.Pages,
-		&i.SizeBytes,
-		&i.MimeTypes,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const upsertReaction = `-- name: UpsertReaction :exec

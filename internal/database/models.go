@@ -13,6 +13,51 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type MembershipPlanType string
+
+const (
+	MembershipPlanTypeFree   MembershipPlanType = "free"
+	MembershipPlanTypeBronze MembershipPlanType = "bronze"
+	MembershipPlanTypeSilver MembershipPlanType = "silver"
+	MembershipPlanTypeGold   MembershipPlanType = "gold"
+	MembershipPlanTypeNA     MembershipPlanType = "n/a"
+)
+
+func (e *MembershipPlanType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MembershipPlanType(s)
+	case string:
+		*e = MembershipPlanType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MembershipPlanType: %T", src)
+	}
+	return nil
+}
+
+type NullMembershipPlanType struct {
+	MembershipPlanType MembershipPlanType `json:"membership_plan_type"`
+	Valid              bool               `json:"valid"` // Valid is true if MembershipPlanType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMembershipPlanType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MembershipPlanType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MembershipPlanType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMembershipPlanType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MembershipPlanType), nil
+}
+
 type ReactionType string
 
 const (
@@ -103,9 +148,9 @@ func (ns NullTargetTypeEnum) Value() (driver.Value, error) {
 type UserRole string
 
 const (
-	UserRoleBasic   UserRole = "basic"
-	UserRolePremium UserRole = "premium"
-	UserRoleAdmin   UserRole = "admin"
+	UserRoleUser   UserRole = "user"
+	UserRoleAdmin  UserRole = "admin"
+	UserRoleWriter UserRole = "writer"
 )
 
 func (e *UserRole) Scan(src interface{}) error {
@@ -219,6 +264,22 @@ type ConversationParticipant struct {
 	LastReadMessageID uuid.NullUUID `json:"last_read_message_id"`
 }
 
+type DailyEngagement struct {
+	Date            pgtype.Date        `json:"date"`
+	TotalDownloads  *int32             `json:"total_downloads"`
+	Total404Errors  *int32             `json:"total_404_errors"`
+	AvgSessionDepth pgtype.Numeric     `json:"avg_session_depth"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
+type DashboardSnapshot struct {
+	SnapshotDate     pgtype.Date        `json:"snapshot_date"`
+	TotalRevenue     pgtype.Numeric     `json:"total_revenue"`
+	ActiveUsers      int32              `json:"active_users"`
+	PlanDistribution []byte             `json:"plan_distribution"`
+	CreatedAt        pgtype.Timestamptz `json:"created_at"`
+}
+
 type Message struct {
 	ID             uuid.UUID `json:"id"`
 	ConversationID uuid.UUID `json:"conversation_id"`
@@ -236,17 +297,30 @@ type Reaction struct {
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
+type SocialEngagement struct {
+	Date      pgtype.Date        `json:"date"`
+	Comments  int32              `json:"comments"`
+	Messages  int32              `json:"messages"`
+	Reactions int32              `json:"reactions"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
+}
+
+type SystemStat struct {
+	EntityName string `json:"entity_name"`
+	TotalCount int64  `json:"total_count"`
+}
+
 type User struct {
-	ID             string             `json:"id"`
-	Name           string             `json:"name"`
-	Email          string             `json:"email"`
-	EmailVerified  bool               `json:"email_verified"`
-	Image          *string            `json:"image"`
-	Role           NullUserRole       `json:"role"`
-	MembershipPlan *string            `json:"membership_plan"`
-	Banned         *bool              `json:"banned"`
-	BanReason      *string            `json:"ban_reason"`
-	BanExpires     pgtype.Timestamptz `json:"ban_expires"`
-	CreatedAt      time.Time          `json:"created_at"`
-	UpdatedAt      time.Time          `json:"updated_at"`
+	ID             string                 `json:"id"`
+	Name           string                 `json:"name"`
+	Email          string                 `json:"email"`
+	EmailVerified  bool                   `json:"email_verified"`
+	Image          *string                `json:"image"`
+	Role           NullUserRole           `json:"role"`
+	MembershipPlan NullMembershipPlanType `json:"membership_plan"`
+	Banned         *bool                  `json:"banned"`
+	BanReason      *string                `json:"ban_reason"`
+	BanExpires     pgtype.Timestamptz     `json:"ban_expires"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
 }

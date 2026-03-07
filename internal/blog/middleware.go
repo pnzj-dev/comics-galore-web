@@ -51,7 +51,7 @@ func SmartViewTracker(svc Service) fiber.Handler {
 				} else {
 					anonInc = 1
 				}
-				_ = svc.IncrementPostView(context.Background(), database.IncrementPostViewParams{
+				_ = svc.IncrementView(context.Background(), database.IncrementPostStatsParams{
 					PostID:    id,
 					AuthViews: authInc,
 					AnonViews: anonInc,
