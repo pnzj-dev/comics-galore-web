@@ -30,13 +30,16 @@ type Env struct {
 
 	// Cloudflare (Images & R2)
 	Cloudflare struct {
-		ImagesAPIKey string `env:"CLOUDFLARE_IMAGES_APIKEY"`
-		AccountID    string `env:"CLOUDFLARE_IMAGES_ACCOUNT_ID"`
-		ImagesURL    string `env:"CLOUDFLARE_IMAGES_IMAGES_URL"`
-		R2Bucket     string `env:"CLOUDFLARE_R2_BUCKET"`
-		R2Endpoint   string `env:"CLOUDFLARE_R2_ENDPOINT"`
-		R2AccessKey  string `env:"CLOUDFLARE_R2_ACCESS_KEY"`
-		R2SecretKey  string `env:"CLOUDFLARE_R2_SECRET_ACCESS_KEY"`
+		ImagesAPIKey       string `env:"CLOUDFLARE_IMAGES_APIKEY"`
+		AccountID          string `env:"CLOUDFLARE_IMAGES_ACCOUNT_ID"`
+		ImagesURL          string `env:"CLOUDFLARE_IMAGES_IMAGES_URL"`
+		R2Bucket           string `env:"CLOUDFLARE_R2_BUCKET"`
+		R2Endpoint         string `env:"CLOUDFLARE_R2_ENDPOINT"`
+		R2AccessKey        string `env:"CLOUDFLARE_R2_ACCESS_KEY"`
+		R2SecretKey        string `env:"CLOUDFLARE_R2_SECRET_ACCESS_KEY"`
+		TurnstileURL       string `env:"CLOUDFLARE_TURNSTILE_URL"`
+		TurnstileSiteKey   string `env:"CLOUDFLARE_TURNSTILE_SITE_KEY"`
+		TurnstileSecretKey string `env:"CLOUDFLARE_TURNSTILE_SECRET_KEY"`
 	}
 
 	// SendGrid

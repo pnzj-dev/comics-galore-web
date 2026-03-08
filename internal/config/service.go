@@ -35,6 +35,7 @@ func NewService(ctx context.Context) (Service, error) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
+
 	slog.SetDefault(logger)
 
 	s := &service{
@@ -44,6 +45,11 @@ func NewService(ctx context.Context) (Service, error) {
 	if err := s.Reload(ctx); err != nil {
 		return nil, fmt.Errorf("initial config load failed: %w", err)
 	}
+
+	s.logger = logger.With(
+		slog.String("application", "comics-galore"),
+		slog.String("env", s.cfg.AppEnv),
+	)
 
 	dbResource, err := database.NewResources(ctx, s.cfg.DatabaseDSN, logger)
 	if err != nil {

@@ -4,7 +4,7 @@ package templates
 import "comics-galore-web/cmd/web/footer"
 import "comics-galore-web/cmd/web/scripts"
 
-templ BaseLayout(header templ.Component, contents templ.Component) {
+templ BaseLayout(turnstileSiteKey string, header templ.Component, contents templ.Component) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,8 +13,10 @@ templ BaseLayout(header templ.Component, contents templ.Component) {
     <title>Comics Galore</title>
     <link href="/assets/css/output.css" rel="stylesheet"/>
     <link href="/assets/css/global.css" rel="stylesheet"/>
+    <link href="https://challenges.cloudflare.com" rel="preconnect"/>
     <script src="/assets/js/subscription-modal.js" defer></script>
-    @scripts.GlobalScript()
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @scripts.GlobalScript(turnstileSiteKey)
     @scripts.StoreScript()
     <!-- Optional favicon or meta tags -->
     <link rel="icon" href="favicon.ico"/>

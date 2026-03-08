@@ -55,6 +55,7 @@ func main() {
 		Messaging:   messaging.NewService(cfg),
 		Cloudflare:  cloudflare.NewService(cfg),
 		Nowpayments: nowpayments.NewService(cfg),
+		Turnstile:   cloudflare.NewTurnstile(cfg),
 		Broadcaster: localBroadcaster,
 	}
 

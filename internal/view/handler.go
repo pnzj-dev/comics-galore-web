@@ -46,9 +46,9 @@ func NewHandler(cfg config.Service, svc blog.Service) Handler {
 	}
 }
 
-func authAndRender(c fiber.Ctx, pageContent templ.Component) error {
+func authAndRender(c fiber.Ctx, turnstileSiteKey string, pageContent templ.Component) error {
 	claims := authHelper.GetClaims(c)
-	headerButton := auth.AuthModal()
+	headerButton := auth.AuthModal(turnstileSiteKey)
 	if claims != nil {
 		headerButton = menu.AvatarMenu(claims)
 	}
@@ -88,7 +88,7 @@ func (h *handler) RenderPostPage(c fiber.Ctx) error {
 		h.logger.Error("failed to fetch related posts", "id", postID, "error", err)
 		return fiber.NewError(fiber.StatusInternalServerError, "Could not load related content")
 	}
-	return authAndRender(c, details.Details(post, relatedPosts, authHelper.GetClaims(c), h.variants))
+	return authAndRender(c, h.cfg.Get().Cloudflare.TurnstileSiteKey, details.Details(post, relatedPosts, authHelper.GetClaims(c), h.variants))
 }
 
 func (h *handler) RenderIndexPage(c fiber.Ctx) error {
@@ -121,7 +121,7 @@ func (h *handler) RenderIndexPage(c fiber.Ctx) error {
 		h.logger.Error("list failed", "error", err)
 		return fiber.NewError(fiber.StatusInternalServerError)
 	}
-	return authAndRender(c, home.HomePage(posts, total, &params))
+	return authAndRender(c, h.cfg.Get().Cloudflare.TurnstileSiteKey, home.HomePage(posts, total, &params))
 }
 
 func (h *handler) RegisterRoutes(app *fiber.App) {

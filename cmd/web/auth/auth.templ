@@ -1,6 +1,6 @@
 package auth
 
-templ AuthModal() {
+templ AuthModal(turnstileSiteKey string) {
 @AuthScript()
 <div x-data="authModal" class="relative z-50 w-auto h-auto"
      @keydown.escape.window="closeModal()" xmlns:x-transition="http://www.w3.org/1999/xhtml">
@@ -96,6 +96,7 @@ templ AuthModal() {
                                 <p x-show="errors.password" x-text="errors.password"
                                    class="text-red-500 text-xs mt-1"></p>
                             </div>
+                            <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>
                             <div class="pt-4 space-y-3">
                                 <button type="submit"
                                         :disabled="isSubmitting"
@@ -204,6 +205,7 @@ templ AuthModal() {
                                 <p x-show="errors.confirmPassword" x-text="errors.confirmPassword"
                                    class="text-red-500 text-xs mt-1"></p>
                             </div>
+                            <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>
                             <div class="pt-4 space-y-3">
                                 <button type="submit"
                                         :disabled="isSubmitting"

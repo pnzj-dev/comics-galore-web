@@ -10,8 +10,10 @@ templ BasicLayout(title string, contents templ.Component) {
         <title>{ title }</title>
         <link href="/assets/css/output.css" rel="stylesheet"/>
         <link href="/assets/css/global.css" rel="stylesheet"/>
-        <!-- Optional favicon or meta tags -->
+        <link href="https://challenges.cloudflare.com" rel="preconnect"/>
         <!--<link rel="icon" href="/assets/images/favicon.ico" /> -->
+        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        <!-- Optional favicon or meta tags -->
     </head>
     <body class="bg-gray-50 flex flex-col items-center justify-center min-h-screen p-6 text-center">
         @contents

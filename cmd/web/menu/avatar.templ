@@ -9,12 +9,12 @@ templ AvatarMenu(claims *auth.Claims) {
      @keydown.escape.window="dropdownOpen = false;" xmlns:x-transition="http://www.w3.org/1999/xhtml">
     <button @click="dropdownOpen = !dropdownOpen"
             class="inline-flex justify-center items-center py-2 pr-12 pl-3 h-12 text-sm font-medium bg-white rounded-md border transition-colors text-neutral-700 hover:bg-neutral-100 active:bg-white focus:bg-white focus:outline-none disabled:opacity-50 disabled:pointer-events-none">
-        <img :src="$store.auth.getAvatarUrl()" alt="$store.user.name"
+        <img src={claims.AvatarUrl()} alt={claims.Name}
              class="object-cover w-8 h-8 rounded-full border border-neutral-200"
              onerror="this.onerror=null;this.src='/assets/images/default-avatar-1.svg';"/>
         <span class="flex flex-col flex-shrink-0 items-start ml-2 h-full leading-none translate-y-px">
-                    <span x-text="$store.auth.getName()"></span>
-                    <span class="text-xs font-light text-neutral-400" x-text="`@${$store.auth.getName()}`"></span>
+                    <span>{claims.Name}</span>
+                    <span class="text-xs font-light text-neutral-400">{claims.Name}</span>
                 </span>
         <svg class="absolute right-0 mr-3 w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none"
              viewBox="0 0 24 24"

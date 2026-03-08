@@ -2,7 +2,7 @@ package modal
 
 import "comics-galore-web/internal/auth"
 
-templ ModalProfile(user *auth.Claims, turnstileKey string) {
+templ ModalProfile(claims *auth.Claims, turnstileKey string) {
 <div x-data="modalProfile()" x-on:modal-open.window="if ($event.detail === 'profile') activeTab = 'profile'"
      class="w-full">
     <div class="border-b border-gray-200 dark:border-gray-700">
@@ -127,7 +127,7 @@ templ ModalProfile(user *auth.Claims, turnstileKey string) {
     function modalProfile() {
         return {
             activeTab: 'profile',
-            name: {{ user.Name }},
+            name: {{ claims.Name }},
             passwords: {current: '', new: '', confirm: ''},
             stats: {
                 uploadedFilesCount: 0,
@@ -136,7 +136,7 @@ templ ModalProfile(user *auth.Claims, turnstileKey string) {
                 dislikesCount: 0,
             },
             //TODO : complete
-            avatarPreviewUrl: {{ user.AvatarUrl() }},
+            avatarPreviewUrl: {{ claims.AvatarUrl() }},
             avatarUploadProgress: 0,
             isSavingName: false,
             isChangingPassword: false,

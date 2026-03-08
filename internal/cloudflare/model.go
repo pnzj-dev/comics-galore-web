@@ -37,3 +37,12 @@ type ListImagesResponse struct {
 type ListImagesResult struct {
 	Images []ImageResult `json:"images"`
 }
+
+type TurnstileResponse struct {
+	Success     bool     `json:"success"`
+	ChallengeTS string   `json:"challenge_ts,omitempty"` // ISO8601 timestamp
+	Hostname    string   `json:"hostname,omitempty"`
+	ErrorCodes  []string `json:"error-codes,omitempty"`
+	Action      string   `json:"action,omitempty"` // optional, if you use action
+	CData       string   `json:"cdata,omitempty"`  // optional
+}

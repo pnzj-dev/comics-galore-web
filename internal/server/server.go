@@ -28,6 +28,7 @@ type Deps struct {
 	Cloudflare  cloudflare.Images
 	Nowpayments nowpayments.Service
 	Broadcaster broadcaster.Service
+	Turnstile   cloudflare.Turnstile
 }
 
 type FiberServer struct {

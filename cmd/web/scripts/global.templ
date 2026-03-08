@@ -2,7 +2,7 @@ package scripts
 
 var globalScriptHandle = templ.NewOnceHandle()
 
-templ GlobalScript() {
+templ GlobalScript(turnstileSiteKey string) {
 @globalScriptHandle.Once() {
 <script defer src="/assets/js/alpinejs/3.x.x/focus.min.js"></script>
 <script defer src="/assets/js/alpinejs/3.x.x/alpinejs.min.js"></script>
@@ -145,6 +145,52 @@ templ GlobalScript() {
                 } else {
                     console.error('Error: Archive global object not found. Ensure libarchive.min.js is loaded with type=\"module\".');
                 }
+            }
+        }));
+
+        Alpine.data('turnstile', () => ({
+            widgetId: null,
+            token: '',
+            init() {
+                // Wait for script to load
+                if (typeof turnstile !== 'undefined') {
+                    this.render();
+                } else {
+                    window.onloadTurnstileCallback = () => this.render();
+                }
+            },
+            render() {
+                this.widgetId = turnstile.render('#turnstile-widget', {
+                    sitekey: {{turnstileSiteKey}},
+                    theme: 'auto',
+                    callback: (token) => {
+                        this.token = token;
+                        console.log('Token ready:', token);
+                    },
+                    'error-callback': () => {
+                        alert('Turnstile error');
+                    },
+                    'expired-callback': () => {
+                        this.token = '';
+                        turnstile.reset(this.widgetId);
+                    }
+                });
+            },
+            reset() {
+                if (this.widgetId) {
+                    turnstile.reset(this.widgetId);
+                    this.token = '';
+                }
+            },
+            handleSubmit() {
+                if (!this.token) return;
+
+                const formData = new FormData(this.$el);
+                fetch(this.$el.action, {
+                    method: 'POST',
+                    headers: { 'x-captcha-response': this.token },
+                    body: formData
+                });
             }
         }));
     });

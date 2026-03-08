@@ -2,10 +2,14 @@ package auth
 
 import (
 	"bytes"
+	"comics-galore-web/cmd/web/auth2"
+	authz "comics-galore-web/internal/auth2"
+	"comics-galore-web/internal/cloudflare"
 	"comics-galore-web/internal/config"
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3/log"
 	"io"
 	"log/slog"
@@ -18,8 +22,9 @@ import (
 )
 
 type handler struct {
-	cfg    config.Service
-	logger *slog.Logger
+	cfg       config.Service
+	logger    *slog.Logger
+	turnstile cloudflare.Turnstile
 }
 
 type Handler interface {
@@ -27,10 +32,11 @@ type Handler interface {
 	GetUserFromSession(c fiber.Ctx) error
 }
 
-func NewHandler(cfg config.Service) Handler {
+func NewHandler(cfg config.Service, turnstile cloudflare.Turnstile) Handler {
 	return &handler{
-		cfg:    cfg,
-		logger: cfg.GetLogger().With("component", "auth_proxy"),
+		cfg:       cfg,
+		turnstile: turnstile,
+		logger:    cfg.GetLogger().With("component", "auth_proxy"),
 	}
 }
 
@@ -55,6 +61,89 @@ func (h *handler) RegisterRoutes(app *fiber.App) {
 			fullTarget = fmt.Sprintf("%s?%s", fullTarget, qs)
 		}
 
+		/**/
+
+		// Only protect POST requests (sign-up, sign-in, reset password, etc.)
+		// GETs like /session, OAuth redirects usually don't need captcha
+		if c.Method() == fiber.MethodPost {
+
+			//binding
+
+			var input any
+			var tab string // for error rendering
+
+			switch {
+			case strings.HasPrefix(path, "sign-in"):
+				input = new(authz.LoginInput)
+				tab = "login"
+			case strings.HasPrefix(path, "sign-up"):
+				input = new(authz.SignupInput)
+				tab = "signup"
+			case strings.HasPrefix(path, "reset-password"):
+				input = new(authz.ForgotInput)
+				tab = "forgot"
+			default:
+				// other POSTs → no early validation
+				goto proxy
+			}
+
+			// 1. Bind & validate input
+			if err := c.Bind().Body(input); err != nil {
+				// Fiber v3 returns validator.ValidationErrors or other bind errors
+				errorsMap := make(map[string]string)
+				if ve, ok := err.(validator.ValidationErrors); ok {
+					for _, fe := range ve {
+						errorsMap[fe.Field()] = fe.Tag() // or use translator for better messages
+						// Better: use universal translator for human messages (see below)
+					}
+				} else {
+					errorsMap["general"] = "Invalid request format"
+				}
+
+				return renderErrorTab(c, tab, errorsMap, c.FormValue("email"), h.cfg.Get().Cloudflare.TurnstileSiteKey)
+			}
+
+			token := c.Get("x-captcha-response") // ← Header sent by frontend
+			remoteIP := c.IP()                   // Or use X-Forwarded-For if behind proxy
+
+			if token == "" {
+				h.logger.Warn("turnstile token missing on POST request",
+					"path", path,
+					"remote_ip", remoteIP,
+				)
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "captcha token required",
+				})
+			}
+
+			// Verify with your turnstile service (from earlier code)
+			success, err := h.turnstile.Verify(c.Context(), token, h.cfg.Get().Cloudflare.TurnstileSecretKey, remoteIP)
+			if err != nil || !success.Success {
+				h.logger.Warn("turnstile verification failed",
+					"error", err,
+					"path", path,
+					"token_prefix", token[:min(12, len(token))]+"...",
+					"remote_ip", remoteIP,
+				)
+				return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+					"error": "captcha verification failed",
+				})
+			}
+
+			h.logger.Debug("turnstile verified successfully",
+				"path", path,
+				"remote_ip", remoteIP,
+			)
+
+			// Forward the token header to Better Auth (required by its captcha plugin)
+			//c.Request().Header.Set("x-captcha-response", token)
+			// Optional: also forward IP if your Better Auth config uses it
+			//c.Request().Header.Set("x-captcha-user-remote-ip", remoteIP)
+		}
+	proxy:
+
+		/**/
+
 		// 4. Handle the Authorization: Bearer Header
 		c.Request().Header.Set(fiber.HeaderAuthorization, "Bearer "+h.cfg.Get().BetterAuthSecret)
 
@@ -65,7 +154,6 @@ func (h *handler) RegisterRoutes(app *fiber.App) {
 		)
 
 		origin := c.Get("Origin")
-
 		// 2. If browser didn't send it (rare), use your Base URL
 		if origin == "" {
 			origin = "http://localhost:8080" // Your Go backend URL
@@ -81,6 +169,26 @@ func (h *handler) RegisterRoutes(app *fiber.App) {
 			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 				"error": "authentication service unreachable",
 			})
+		}
+
+		// --- HTMX SUPPORT ---
+		// Inside the group.All("/*", func(c fiber.Ctx) error { ... })
+		if c.Get("HX-Request") == "true" {
+			// If Better Auth returned error (4xx/5xx) or we have Turnstile error
+			if c.Response().StatusCode() >= 400 || c.Locals("turnstileError") != nil {
+				// Reuse the same VM + templ.KV pattern
+				errors := map[string]string{
+					"general": "Invalid credentials or captcha failed", // map from Better Auth JSON or your Turnstile error
+				}
+				vm := auth2.AuthModalVM{
+					Tab:              detectTabFromPath(path), // helper
+					Errors:           errors,
+					Values:           extractValuesFromRequest(c), // optional repopulation
+					TurnstileSiteKey: h.cfg.Get().Cloudflare.TurnstileSiteKey,
+				}
+				c.Response().Header.Set("Content-Type", "text/html")
+				return auth2.AuthTabContent(vm).Render(c.Context(), c.Response().BodyWriter())
+			}
 		}
 
 		// --- DEBUG START ---
@@ -214,4 +322,18 @@ func (h *handler) GetUserFromSession(c fiber.Ctx) error {
 
 	l.Debug("user session retrieved", "user_id", getSession.User.Id)
 	return c.JSON(getSession.User)
+}
+
+func renderErrorTab(c fiber.Ctx, tab string, errors map[string]string, email string, siteKey string) error {
+	values := map[string]string{"email": email} // repopulate email if present
+
+	vm := auth2.AuthModalVM{
+		Tab:              tab,
+		Errors:           errors,
+		Values:           values,
+		TurnstileSiteKey: siteKey,
+	}
+
+	c.Set("Content-Type", "text/html")
+	return auth2.AuthTabContent(vm).Render(c.Context(), c.Response().BodyWriter())
 }

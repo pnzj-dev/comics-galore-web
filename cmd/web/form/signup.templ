@@ -1,0 +1,26 @@
+package form
+
+templ Signup(turnstileSiteKey string) {
+@Layout() {
+<div class="max-w-md mx-auto p-6 bg-white rounded shadow">
+    <h2 class="text-2xl mb-6">Sign Up</h2>
+    <form x-data="turnstile" x-init="init()" action="/api/v1/auth/sign-up/email" method="POST"
+          @submit="if (!token) { $event.preventDefault(); alert('Complete captcha'); return; }">
+
+        <label for="signup-email">Email</label>
+        <input id="signup-email" type="email" name="email" placeholder="Email" required class="w-full p-3 mb-4 border"/>
+
+        <label for="signup-password"> </label>
+        <input id="signup-password" type="password" name="password" placeholder="Password" required
+               class="w-full p-3 mb-4 border"/>
+
+        <div id="turnstile-widget"></div>
+
+        <!-- hidden input optional -->
+        <input type="hidden" name="cf-turnstile-response" x-model="token">
+
+        <button type="submit" :disabled="!token">Sign Up</button>
+    </form>
+</div>
+}
+}
