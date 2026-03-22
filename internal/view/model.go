@@ -1,6 +1,7 @@
 package view
 
 import (
+	"comics-galore-web/internal/auth"
 	"github.com/a-h/templ"
 	"time"
 )
@@ -29,15 +30,6 @@ func NewModalConfig(options ...func(*ModalConfig)) *ModalConfig {
 	return cfg
 }
 
-type UserProfile struct {
-	ID                 string `json:"id"`
-	LikesCount         int    `json:"likesCount"`
-	DislikesCount      int    `json:"dislikesCount"`
-	CommentsCount      int    `json:"commentsCount"`
-	UploadedFilesCount int    `json:"uploadedFilesCount"`
-	FavoriteBlogsCount int    `json:"favoriteBlogsCount"`
-}
-
 type Tag struct {
 	Index int    `json:"index"`
 	Name  string `json:"name"`
@@ -58,7 +50,12 @@ type SubscriptionPlan struct {
 	Discount float32 `json:"discount"`
 }
 
-type Settings struct {
+type AppContext struct {
+	Title             string             `json:"title,omitempty"`
+	TurnstileSiteKey  string             `json:"turnstileSiteKey,omitempty"`
+	TurnstileEnabled  bool               `json:"turnstileEnabled,omitempty"`
+	Claims            *auth.Claims       `json:"claims,omitempty"`
+	Variants          map[string]string  `json:"variants,omitempty"`
 	Tags              []Tag              `json:"tags"`
 	Categories        []Category         `json:"categories"`
 	SubscriptionPlans []SubscriptionPlan `json:"subscriptionPlans"`

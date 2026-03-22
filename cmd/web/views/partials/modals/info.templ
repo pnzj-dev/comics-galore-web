@@ -1,0 +1,18 @@
+package modals
+
+
+templ Info(title string, message string, icon string, buttonLabel string) {
+<div class="text-center space-y-6 py-8">
+    if icon != "" {
+    <div class="text-6xl">{ icon }</div>
+    }
+    <h3 class="text-2xl font-semibold text-gray-800">{ title }</h3>
+    <p class="text-gray-600 text-lg leading-relaxed px-4">
+        { message }
+    </p>
+    <button @click="ui.modal.open = false"
+            class="mt-4 px-8 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition active:scale-98">
+        { buttonLabel }
+    </button>
+</div>
+}

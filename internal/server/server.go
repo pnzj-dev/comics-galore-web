@@ -1,7 +1,6 @@
 package server
 
 import (
-	"comics-galore-web/internal/archive"
 	"comics-galore-web/internal/blog"
 	"comics-galore-web/internal/broadcaster"
 	"comics-galore-web/internal/cloudflare"
@@ -12,6 +11,7 @@ import (
 	"comics-galore-web/internal/nowpayments"
 	"comics-galore-web/internal/picture"
 	"comics-galore-web/internal/qrcode"
+	"comics-galore-web/internal/storage"
 	"fmt"
 	"github.com/gofiber/fiber/v3"
 )
@@ -21,7 +21,7 @@ type Deps struct {
 	Email       email.Service
 	Config      config.Service
 	QrCode      qrcode.Service
-	Archive     archive.Service
+	Storage     storage.Service
 	Picture     picture.Service
 	Comment     comment.Service
 	Messaging   messaging.Service
@@ -50,6 +50,8 @@ func New(d *Deps) *FiberServer {
 		// Optional: Good practice to include strict routing or custom error handlers here
 		StrictRouting: true,
 	})
+
+	//app.Use(SecurityMiddleware())
 
 	return &FiberServer{
 		App: app,

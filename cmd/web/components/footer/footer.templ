@@ -1,0 +1,115 @@
+package footer
+
+import "strconv"
+import "time"
+
+// FIX 7: Compute year once at startup rather than on every render.
+var currentYear = strconv.Itoa(time.Now().Year())
+
+templ Footer(sections []FooterSection, socialLinks []FooterLink) {
+// FIX 5: Removed shadow-inner — it fights with border-t on a white background.
+<footer class="bg-white border-t">
+
+    <!-- Main footer grid -->
+    <div class="w-full max-w-7xl mx-auto px-6 py-12">
+        // FIX 1: Brand column is explicitly col-span-1, sections are wrapped
+        // in a col-span-3 sub-grid so layout holds regardless of section count.
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-10">
+
+            <!-- Brand column -->
+            <div class="md:col-span-1 space-y-4">
+                <a href="/">
+                    <img src="/assets/images/logo.png" alt="Comics Galore" class="h-10 w-auto"/>
+                </a>
+                <p class="text-sm text-gray-500 leading-relaxed">
+                    Your ultimate destination for comics, manga, and graphic novels. Discover, collect, and share your
+                    passion.
+                </p>
+                <!-- FIX 2 + FIX 8: Social links rendered as styled badges with
+                     target="_blank" and rel="noopener noreferrer". -->
+                if len(socialLinks) > 0 {
+                <div class="flex flex-wrap items-center gap-2 pt-2">
+                    for _, s := range socialLinks {
+                    <a
+                            href={ templ.SafeURL(s.Href) }
+                            aria-label={ s.Label }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-500 bg-gray-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-full border border-gray-200 transition-colors"
+                    >
+                        { s.Label }
+                    </a>
+                    }
+                </div>
+                }
+            </div>
+
+            <!-- FIX 1: Dynamic link sections wrapped in their own sub-grid,
+                 occupying the remaining 3 columns reliably. -->
+            <div class="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-8">
+                for _, section := range sections {
+                <div class="space-y-4">
+                    <h3 class="text-sm font-semibold text-gray-800 uppercase tracking-wider">
+                        { section.Title }
+                    </h3>
+                    <ul class="space-y-2">
+                        for _, link := range section.Links {
+                        <li>
+                            <a
+                                    href={ templ.SafeURL(link.Href) }
+                                    class="text-sm text-gray-500 hover:text-indigo-600 transition-colors"
+                            >
+                                { link.Label }
+                            </a>
+                        </li>
+                        }
+                    </ul>
+                </div>
+                }
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Newsletter -->
+    <div class="border-t border-gray-100">
+        <div class="w-full max-w-7xl mx-auto px-6 py-8">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-800">Stay up to date</h4>
+                    <p class="text-sm text-gray-500">Get the latest releases and deals straight to your inbox.</p>
+                </div>
+                <div class="flex items-center w-full md:w-auto">
+                    // FIX 3 + FIX 4: h-10 on both input and button guarantees
+                    // cross-browser height alignment. relative/z-10 prevents
+                    // the focus ring from overflowing onto the button.
+                    <input
+                            type="email"
+                            placeholder="your@email.com"
+                            class="relative z-0 focus:z-10 h-10 w-full md:w-64 px-4 py-2 text-sm border border-gray-200 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
+                    />
+                    <button class="h-10 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-r-lg transition-colors flex-shrink-0">
+                        Subscribe
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom bar -->
+    // FIX 6: py-6 and gap-4 for better mobile breathing room.
+    <div class="border-t border-gray-100">
+        <div class="w-full max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+            // FIX 7: Use pre-computed year variable instead of calling
+            // time.Now() on every render.
+            <span>© { currentYear } Comics Galore. All rights reserved.</span>
+            <div class="flex items-center space-x-4">
+                <a href="/privacy" class="hover:text-indigo-600 transition-colors">Privacy Policy</a>
+                <a href="/terms" class="hover:text-indigo-600 transition-colors">Terms of Use</a>
+                <a href="/cookies" class="hover:text-indigo-600 transition-colors">Cookie Policy</a>
+            </div>
+        </div>
+    </div>
+
+</footer>
+}

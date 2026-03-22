@@ -6,7 +6,7 @@ import "github.com/gofiber/fiber/v3"
 func GetClaims(c fiber.Ctx) *Claims {
 	claims, ok := c.Locals("claims").(Claims)
 	if !ok {
-		return nil
+		return &Claims{}
 	}
 	return &claims
 }

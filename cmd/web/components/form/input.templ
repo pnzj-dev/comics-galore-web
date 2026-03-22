@@ -1,0 +1,78 @@
+package form
+
+import "fmt"
+
+// InputFieldProps defines the parameters for a reusable form input
+type InputFieldProps struct {
+Name        string
+Label       string
+Type        string
+Required    bool
+Placeholder string
+Value       string
+Error       string
+ExtraClass  string
+ModelPath   string
+ErrorPath   string
+ExtraAttrs  templ.Attributes
+}
+
+templ Input(props InputFieldProps) {
+{{
+model := props.ModelPath
+if model == "" {
+model = props.Name
+}
+errorExpr := props.ErrorPath
+if errorExpr == "" {
+errorExpr = fmt.Sprintf("formErrors.%s", props.Name)
+}
+}}
+<div class="space-y-1.5">
+    if props.Label != "" {
+    <label for={props.Name} class="block text-sm font-medium text-gray-700">
+        { props.Label }
+        if props.Required {
+        <span class="text-red-500">*</span>
+        }
+    </label>
+    }
+    <input id={props.Name}
+            name={props.Name}
+            type={props.Type}
+            required?={props.Required}
+            placeholder={props.Placeholder}
+            value={props.Value}
+            class={ templ.Classes(
+    "block w-full rounded-lg border-gray-300 shadow-sm w-full",
+    "mt-2 px-4 py-2 outline-none",
+    "focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm",
+    "disabled:bg-gray-100 disabled:cursor-not-allowed",
+    "transition-colors duration-150",
+    templ.KV("border-red-500 focus:border-red-500 focus:ring-red-500", props.Error != ""),
+    props.ExtraClass,
+    )}
+    x-model={ model }
+    x-bind:class={ fmt.Sprintf(`{'border-red-500 focus:border-red-500 focus:ring-red-500': %s}`, errorExpr) }
+    x-effect={ fmt.Sprintf(`$el.setCustomValidity(%s || '')`, errorExpr) }
+    aria-invalid={ fmt.Sprintf("%t", props.Error != "") }
+    aria-describedby={ fmt.Sprintf("%s-error", props.Name) }
+    { props.ExtraAttrs... }
+    />
+
+    <!-- Alpine client-side error (reactive) -->
+    <p
+            x-show={ fmt.Sprintf(`%s`, errorExpr) }
+            x-text={ errorExpr }
+            id={ fmt.Sprintf("%s-error", props.Name) }
+    class="mt-1.5 text-sm text-red-600"
+    ></p>
+
+    <!-- Server-side error (static, rendered once) -->
+    if props.Error != "" {
+    <p id={ fmt.Sprintf("%s-error", props.Name) } class="mt-1.5 text-sm text-red-600">
+    { props.Error }
+    </p>
+    }
+</div>
+}

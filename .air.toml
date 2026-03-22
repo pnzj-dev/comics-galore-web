@@ -6,6 +6,8 @@ tmp_dir = "tmp"
   args_bin = []
   bin = "./main"
   cmd = "make build"
+# Use the relative path to the binary produced by your 'cmd'
+#  full_bin = "dlv exec ./main --headless --listen=:2345 --api-version=2 --accept-multiclient --continue"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata", "node_modules"]
   exclude_file = []

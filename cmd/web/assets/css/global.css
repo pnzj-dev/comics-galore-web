@@ -2,9 +2,43 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    /*background-color: #f7fafc;*/ /* Light gray background */
+    background-color: #f7fafc;  /*Light gray background*/
 }
 
 [x-cloak] {
     display: none !important;
+}
+
+/* Hide indicator by default */
+.htmx-indicator {
+    display: none;
+}
+
+/* Show spinner and hide text during request */
+.htmx-request #login-spinner,
+.htmx-request .htmx-indicator {
+    display: inline-block !important;
+}
+
+.htmx-request #login-text {
+    display: none !important;
+}
+
+/* Optional: subtle overlay on button during load */
+.htmx-request {
+    @apply relative pointer-events-none;
+}
+
+.htmx-request > * {
+    @apply opacity-70;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
 }

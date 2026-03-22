@@ -54,6 +54,15 @@ FROM blogposts b
 ORDER BY b.created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: ListPostsByCategory :many
+SELECT sqlc.embed(b), sqlc.embed(c), sqlc.embed(s)
+FROM blogposts b
+         JOIN categories c ON b.category_id = c.id
+         LEFT JOIN blogpost_stats s ON b.id = s.post_id
+WHERE b.category_id = $1
+ORDER BY b.created_at DESC
+LIMIT $2 OFFSET $3;
+
 -- name: SearchPosts :many
 SELECT sqlc.embed(b), sqlc.embed(c), sqlc.embed(s)
 FROM blogposts b
@@ -76,7 +85,10 @@ LIMIT sqlc.arg('limit') OFFSET sqlc.arg('offset');
 SELECT count(*)
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
-WHERE (sqlc.arg('search_query')::text = '' OR (
+WHERE
+  -- Strict UUID Filter (if provided)
+    (sqlc.narg('category_id')::uuid IS NULL OR b.category_id = sqlc.narg('category_id'))
+  AND (sqlc.arg('search_query')::text = '' OR (
     (sqlc.arg('search_title')::bool AND b.title ILIKE '%' || sqlc.arg('search_query')::text || '%') OR
     (sqlc.arg('search_author')::bool AND b.author_name ILIKE '%' || sqlc.arg('search_query')::text || '%') OR
     (sqlc.arg('search_description')::bool AND b.description ILIKE '%' || sqlc.arg('search_query')::text || '%') OR
@@ -141,3 +153,13 @@ ON CONFLICT (date)
                   messages   = EXCLUDED.messages,
                   reactions  = EXCLUDED.reactions,
                   updated_at = NOW();
+
+
+-- name: ListCategoriesLimit :many
+SELECT id,
+       slug,
+       display_name,
+       created_at
+FROM categories
+ORDER BY created_at ASC
+LIMIT 5;

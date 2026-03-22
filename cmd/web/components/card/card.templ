@@ -1,0 +1,115 @@
+package card
+
+import "fmt"
+import "comics-galore-web/internal/blog"
+import "comics-galore-web/cmd/web/components/badge"
+import "comics-galore-web/cmd/web/components/icons"
+import "comics-galore-web/cmd/web/components/counter"
+
+
+templ Card(post *blog.Post, isFavorite bool) {
+<div x-data={cardXData(isFavorite,post.Rating,post.Downloads)}
+     class="relative bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 w-full max-w-sm mx-auto group">
+
+    <div class="relative w-full overflow-hidden" style="padding-top: 66.66%;">
+
+        <!-- Favorite button overlay -->
+        <button @click={dispatchFavorite(post.ID)}
+                type="button"
+                class="absolute top-3 left-3 z-30 p-2 rounded-full bg-white/80 hover:bg-white shadow-md transition-all"
+                aria-label="Toggle favorite">
+            <svg class="w-6 h-6 transition-colors"
+                 :class="isFavorite ? 'text-red-500 fill-current' : 'text-gray-500'"
+                 fill="none"
+                 stroke="currentColor"
+                 viewBox="0 0 24 24">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+            </svg>
+        </button>
+
+        <!-- New badge -->
+        if !post.IsUpdatedAtOlderThanHours(5) {
+        <div class="absolute top-3 left-16 bg-red-600 bg-opacity-90 text-white text-xs font-semibold px-2 py-1 rounded z-20">
+            NEW
+        </div>
+        }
+
+        <!-- Image + hover overlay -->
+        <a href={post.Url()}>
+            <img src={post.Cover.GetURL()}
+                 alt={fmt.Sprintf("%s",post.Title)}
+                 onerror="this.src='/assets/images/image-error-placeholder.svg'; this.onerror='';"
+                 class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"/>
+
+            <!-- Hover description overlay -->
+            <div class="absolute inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <p class="text-center font-light">{ post.Description }</p>
+            </div>
+
+            <!-- Previews count badge -->
+            if len(post.Previews) > 0 {
+            <div class="absolute top-3 right-3 bg-gray-900 bg-opacity-75 text-white text-xs px-2 py-1 rounded-full z-20">
+                { fmt.Sprintf("%d Previews", len(post.Previews)) }
+            </div>
+            }
+        </a>
+    </div>
+
+    <div class="p-4 space-y-4">
+        <h3 class="text-xl font-bold text-gray-900 truncate">{ post.Title }</h3>
+
+        <p class="text-sm text-gray-600">
+            By <span class="font-medium">{ post.AuthorName }</span> in
+            @badge.Badge(badge.Props{
+            Text: post.CategoryName,
+            Variant: badge.VariantPurple,
+            Size: "xs",
+            Outline: true,
+            Margin: "mx-1.5",
+            })
+        </p>
+
+        <!-- Interactive rating stars -->
+        <div class="flex items-center space-x-1">
+            <template x-for="star in 5">
+                <button type="button"
+                        class="focus:outline-none transition-transform hover:scale-110"
+                        @click={dispatchRating(post.ID)}>
+                    @icons.Star(
+                    icons.IconProps{Class: "w-6 h-6"},
+                    templ.Attributes{
+                    "x-bind:class": starBindClass(),
+                    "aria-hidden": "true",
+                    },
+                    )
+                </button>
+            </template>
+            <span class="ml-2 text-sm font-medium text-gray-700">
+                    <template x-if="pendingRating">
+                        <span x-text="pendingRating + ' / 5'"></span>
+                    </template>
+                    <template x-if="!pendingRating">
+                        <span>{ post.FormatRating() }</span>
+                    </template>
+                </span>
+        </div>
+
+        <!-- Stats row -->
+        <div class="flex items-center justify-between text-sm text-gray-700">
+            <div class="flex items-center space-x-4">
+                @counter.Comment(post.Comments)
+                @counter.Page(post.Pages)
+                @counter.View(post.AnonViews + post.AuthViews)
+            </div>
+        </div>
+
+        <!-- Metadata footer -->
+        <p class="text-xs text-gray-400 text-right mt-3">
+            Last updated: <span>{ post.FormatUpdatedAt() }</span>
+        </p>
+    </div>
+</div>
+}

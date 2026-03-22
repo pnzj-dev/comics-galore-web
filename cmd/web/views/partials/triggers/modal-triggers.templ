@@ -1,0 +1,48 @@
+package triggers
+
+
+func getSkeleton() string {
+return `
+<div class="space-y-4 animate-pulse">
+    <div class="h-4 bg-gray-200 rounded w-1/4 skeleton"></div>
+    <div class="h-10 bg-gray-100 rounded w-full skeleton"></div>
+    <div class="h-24 bg-gray-100 rounded w-full skeleton"></div>
+</div>`
+}
+
+func getSkeleton2() string {
+return `
+<div class="space-y-4 animate-pulse">
+    <div class="h-4 bg-gray-200 rounded w-1/4 skeleton"></div>
+    <div class="h-10 bg-gray-100 rounded w-full skeleton"></div>
+    <div class="grid grid-cols-2 gap-4">
+        <div class="h-10 bg-gray-100 rounded skeleton"></div>
+        <div class="h-10 bg-gray-100 rounded skeleton"></div>
+    </div>
+    <div class="h-24 bg-gray-100 rounded w-full skeleton"></div>
+    <div class="flex justify-end">
+        <div class="h-10 bg-gray-200 rounded w-24 skeleton"></div>
+    </div>
+</div>`
+}
+
+func getErrorState() string {
+return `
+<div class="text-center py-8">
+    <div class="text-4xl mb-4">⚠️</div>
+    <h3 class="text-lg font-bold text-gray-900">Something went wrong</h3>
+    <p class="text-sm text-gray-500 mb-6">We couldn't load this form. Please try again.</p>
+    <button onclick="window.location.reload()" class="text-indigo-600 font-bold hover:underline">Refresh Page</button>
+</div>`
+}
+
+templ OpenModal(props Props) {
+<button type="button"
+        hx-get={props.Url}
+        hx-target="#modal-content"
+        hx-swap="innerHTML"
+        {getModalAttributes(props,getErrorState())...}
+        class={props.Classes}>
+    { props.Label }
+</button>
+}

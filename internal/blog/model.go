@@ -143,3 +143,9 @@ func (p *Post) IsUpdatedAtOlderThanHours(hours int) bool {
 func (p *Post) GetThumbnailUrl() string {
 	return fmt.Sprintf("https://imagedelivery.net/%s/thumbnail", p.Cover.CloudflareID)
 }
+
+type NavItem struct {
+	Label  string
+	Href   string
+	Active bool
+}

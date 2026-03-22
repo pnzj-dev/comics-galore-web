@@ -1,0 +1,102 @@
+package comment
+
+var commentHandle = templ.NewOnceHandle()
+
+templ Script() {
+@commentHandle.Once() {
+<script>
+    function commentData(postId, userId, username, avatarId) {
+        return {
+            comments: [],
+            newComment: {content: ''},
+            replyForms: {},
+            eventSource: null,
+            postId: postId,
+            userId: userId,
+            avatarId: avatarId,
+            username: username,
+
+            init() {
+                this.refreshComments().then(() => {
+                    this.connectSSE();
+                });
+            },
+
+            connectSSE() {
+                this.eventSource = new EventSource(`/api/v1/events/comment/${this.postId}`);
+                this.eventSource.addEventListener('comment', (event) => {
+                    const newComment = JSON.parse(event.data);
+                    this.addCommentToTree(newComment);
+                });
+            },
+
+            async refreshComments() {
+                const res = await fetch(`/api/v1/comment/list/${this.postId}`);
+                if (res.ok) {
+                    this.comments = await res.json();
+                }
+            },
+
+            async addComment(parentId) {
+                const data = parentId ? this.replyForms[parentId] : this.newComment;
+                const req = {
+                    postId: this.postId,
+                    userId: this.userId,
+                    username: this.username,
+                    avatarId: this.avatarId,
+                    content: data.content,
+                    parentId: parentId,
+                };
+
+                const res = await fetch(`/api/v1/comment/${this.postId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(req)
+                });
+
+                if (res.ok) {
+                    if (parentId) {
+                        delete this.replyForms[parentId];
+                    } else {
+                        this.newComment.content = '';
+                    }
+                }
+            },
+
+            toggleReply(id) {
+                if (this.replyForms[id]) {
+                    delete this.replyForms[id];
+                } else {
+                    this.replyForms[id] = {content: ''};
+                }
+            },
+
+            avatarUrl(id) {
+                // return id != null && id !== "" ? `${id}` : '/assets/images/default-avatar-1.svg'
+                return id != null && id !== "" ? `${id}` : `https://ui-avatars.com/api/?name=${this.username}`
+            },
+
+            addCommentToTree(newComment) {
+                if (!newComment.parentId) {
+                    this.comments.unshift(newComment);
+                    return;
+                }
+
+                const findAndAdd = (list) => {
+                    for (let c of list) {
+                        if (c.id === newComment.parentId) {
+                            if (!c.replies) c.replies = [];
+                            c.replies.push(newComment);
+                            return true;
+                        }
+                        if (c.replies && findAndAdd(c.replies)) return true;
+                    }
+                    return false;
+                };
+                findAndAdd(this.comments);
+            }
+        }
+    }
+</script>
+}
+}

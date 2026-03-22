@@ -1,8 +1,7 @@
 package server
 
 import (
-	"comics-galore-web/cmd/web/not_found"
-	"comics-galore-web/cmd/web/templates"
+	"comics-galore-web/cmd/web/views/pages"
 	"comics-galore-web/internal/config"
 	"fmt"
 	"github.com/gofiber/fiber/v3"
@@ -12,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/logger"
 	"log"
 	"log/slog"
+	"strings"
 	"time"
 )
 
@@ -257,9 +257,35 @@ func (s *FiberServer) NotFound() fiber.Handler {
 			})
 		}
 
-		title := "404 - Page Not Found | Comics Galore"
-		notFound := not_found.NotFound(c.OriginalURL())
+		//title := "404 - Page Not Found | Comics Galore"
+		notFound := pages.NotFound(c.OriginalURL())
 		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-		return templates.BasicLayout(title, notFound).Render(c.Context(), c.Response().BodyWriter())
+		return notFound.Render(c.Context(), c.Response().BodyWriter())
+	}
+}
+
+func SecurityMiddleware() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		csp := strings.Join([]string{
+			"default-src 'self'",
+			// 1. Allow HTMX from unpkg and Turnstile from Cloudflare
+			"script-src 'self' https://challenges.cloudflare.com https://unpkg.com 'unsafe-eval'",
+			// 2. Allow Turnstile iframes
+			"frame-src 'self' https://challenges.cloudflare.com",
+			// 3. Allow HTMX/Alpine to talk back to your server and Cloudflare
+			"connect-src 'self' https://challenges.cloudflare.com",
+			// 4. Allow Styles + Google Fonts CSS + Alpine/Tailwind inline styles
+			"style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+			// 5. Allow Google Font files
+			"font-src 'self' https://fonts.gstatic.com",
+			// 6. Allow your Cloudflare Images
+			"img-src 'self' data: https://imagedelivery.net",
+		}, "; ")
+
+		c.Set("Content-Security-Policy", csp)
+		c.Set("X-Frame-Options", "SAMEORIGIN")
+		c.Set("X-Content-Type-Options", "nosniff")
+
+		return c.Next()
 	}
 }

@@ -1,0 +1,84 @@
+package scripts
+
+var uploadScriptHandler = templ.NewOnceHandle()
+
+templ UploadScript(){
+@uploadScriptHandler.Once(){
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('fileUploadData', (presignUrl, uploadPathAttr) => ({
+                uploading: false,
+                progress: 0,
+                fileKey: '',
+                fileName: '',
+                presignUrl: presignUrl,
+
+                async handleUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    this.fileName = file.name;
+                    this.uploading = true;
+                    this.progress = 0;
+
+                    try {
+                        const res = await fetch(this.presignUrl, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({filename: file.name, contentType: file.type})
+                        });
+
+                        if (!res.ok) throw new Error('Could not get upload URL');
+                        const {url, key} = await res.json();
+
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('PUT', url);
+                        xhr.setRequestHeader('Content-Type', file.type);
+
+                        xhr.upload.onprogress = (e) => {
+                            if (e.lengthComputable) {
+                                this.progress = Math.round((e.loaded / e.total) * 100);
+                            }
+                        };
+
+                        xhr.onload = () => {
+                            if (xhr.status === 200) {
+                                this.fileKey = key;
+                                // Update the target variable in the Alpine data tree
+                                this.setDeepValue(this.$data, uploadPathAttr, key);
+                                this.uploading = false;
+                            } else {
+                                throw new Error('S3 Upload failed');
+                            }
+                        };
+                        xhr.send(file);
+                    } catch (err) {
+                        console.error(err);
+                        alert(err.message);
+                        this.uploading = false;
+                    }
+                },
+
+                deleteFile() {
+                    this.fileKey = '';
+                    this.fileName = '';
+                    this.progress = 0;
+                    this.setDeepValue(this.$data, uploadPathAttr, '');
+                    this.$refs.fileInput.value = '';
+                },
+
+                // Helper to handle nested paths like "form.images.cover"
+                setDeepValue(obj, path, value) {
+                    const keys = path.split('.');
+                    let current = obj;
+                    for (let i = 0; i < keys.length - 1; i++) {
+                        current = current[keys[i]];
+                    }
+                    current[keys[keys.length - 1]] = value;
+                }
+            })
+        )
+    })
+</script>
+}
+}

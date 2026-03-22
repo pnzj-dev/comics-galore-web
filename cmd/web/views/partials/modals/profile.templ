@@ -1,0 +1,214 @@
+package modals
+
+import "comics-galore-web/cmd/web/views/helper"
+
+templ Profile() {
+{{ appContext := helper.GetAppContext(ctx) }}
+<div x-data="modalProfile()" class="w-full max-h-[80vh] overflow-y-auto custom-scrollbar px-1">
+
+    <div class="mb-8">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Public Profile</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Manage how you appear to others on the platform.</p>
+    </div>
+
+    <div class="sticky top-0 z-20 space-y-2 mb-4">
+        <template x-if="successMessage">
+            <div class="p-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" x-text="successMessage"></div>
+        </template>
+        <template x-if="errorMessage">
+            <div class="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" x-text="errorMessage"></div>
+        </template>
+    </div>
+
+    <div class="space-y-10 pb-10">
+        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Identity</h3>
+                <p class="text-xs text-gray-500">Your avatar and display name.</p>
+            </div>
+            <div class="sm:col-span-2 space-y-6">
+                <div class="flex items-center space-x-6">
+                    <div class="relative group">
+                        <img :src="avatarPreviewUrl"
+                             class="h-20 w-20 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800 shadow-sm"
+                             onerror="this.src='/assets/images/default-avatar.svg'" alt="Avatar"/>
+                        <button @click="$refs.avatarInput.click()"
+                                class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                        </button>
+                    </div>
+                    <input type="file" class="sr-only" x-ref="avatarInput" @change="handleAvatarChange" accept="image/*"/>
+                    <div class="text-xs text-gray-500">
+                        <p class="font-medium text-gray-700 dark:text-gray-300">Click image to upload</p>
+                        <p>JPG, PNG or GIF. Max 2MB.</p>
+                    </div>
+                </div>
+
+                <form @submit.prevent="updateName" class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
+                    <div class="flex gap-2">
+                        <input type="text" x-model="name" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"/>
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+                            Save
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-800" />
+
+        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">About</h3>
+                <p class="text-xs text-gray-500">Tell us a bit about yourself.</p>
+            </div>
+            <div class="sm:col-span-2">
+                <form @submit.prevent="updateBio" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
+                        <textarea x-model="bio" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white" placeholder="I love comics and tech..."></textarea>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                            Update Bio
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <hr class="border-gray-200 dark:border-gray-800" />
+
+        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
+            <div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Account Details</h3>
+            </div>
+            <div class="sm:col-span-2 grid grid-cols-2 gap-4">
+                <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Member Since</span>
+                    <span class="text-sm font-medium dark:text-gray-200">{ appContext.Claims.CreatedAt.Format("Jan 2006") }</span>
+                </div>
+                <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Account Type</span>
+                    <span class="text-sm font-medium dark:text-gray-200 capitalize">{ appContext.Claims.Role }</span>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+<script>
+    function modalProfile() {
+        return {
+            // Data State
+            name: {{ appContext.Claims.Name }},
+            bio: "",
+            avatarPreviewUrl: {{ appContext.Claims.AvatarUrl() }},
+
+            // UI State
+            avatarUploadProgress: 0,
+            isSavingName: false,
+            isSavingBio: false,
+            successMessage: '',
+            errorMessage: '',
+
+            handleAvatarChange(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                if (file.size > 2 * 1024 * 1024) {
+                    this.setErrorMessage('Image must be smaller than 2MB.');
+                    return;
+                }
+                const allowedTypes = ['image/png', 'image/jpeg', 'image/gif'];
+                if (!allowedTypes.includes(file.type)) {
+                    this.setErrorMessage('Supported formats: JPG, PNG, GIF.');
+                    return;
+                }
+
+                this.avatarPreviewUrl = URL.createObjectURL(file);
+                this.uploadAvatar(file);
+            },
+
+            async uploadAvatar(file) {
+                const formData = new FormData();
+                formData.append('avatar', file);
+
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/v1/profile/avatar', true);
+
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        this.avatarUploadProgress = (event.loaded / event.total) * 100;
+                    }
+                };
+
+                xhr.onload = () => {
+                    this.avatarUploadProgress = 0;
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        const response = JSON.parse(xhr.responseText);
+                        this.avatarPreviewUrl = response.data.avatarUrl;
+                        this.setSuccessMessage('Avatar updated successfully.');
+                    } else {
+                        const errorData = JSON.parse(xhr.responseText);
+                        this.setErrorMessage(errorData.message || 'Failed to upload.');
+                        // Note: You might want to refresh the original URL here on failure
+                    }
+                };
+
+                xhr.onerror = () => this.setErrorMessage('Network error during upload.');
+                xhr.send(formData);
+            },
+
+            async updateName() {
+                this.isSavingName = true;
+                await this.submitForm('/api/v1/profile/name', { name: this.name }, 'isSavingName', 'Name updated.');
+            },
+
+            async updateBio() {
+                this.isSavingBio = true;
+                await this.submitForm('/api/v1/profile/bio', { bio: this.bio }, 'isSavingBio', 'Bio updated.');
+            },
+
+            async submitForm(endpoint, payload, flag, successMsg) {
+                this.clearMessages();
+                try {
+                    const response = await fetch(endpoint, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Update failed.');
+                    }
+
+                    this.setSuccessMessage(successMsg);
+                } catch (error) {
+                    this.setErrorMessage(error.message);
+                } finally {
+                    this[flag] = false;
+                }
+            },
+
+            setSuccessMessage(msg) {
+                this.successMessage = msg;
+                setTimeout(() => this.successMessage = '', 3000);
+            },
+            setErrorMessage(msg) {
+                this.errorMessage = msg;
+                setTimeout(() => this.errorMessage = '', 5000);
+            },
+            clearMessages() {
+                this.successMessage = '';
+                this.errorMessage = '';
+            }
+        }
+    }
+</script>
+}

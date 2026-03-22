@@ -58,7 +58,6 @@ func SmartViewTracker(svc Service) fiber.Handler {
 				})
 			}(postID, isAuth)
 		}
-
 		return nil
 	}
 }

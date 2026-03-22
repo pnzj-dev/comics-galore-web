@@ -39,6 +39,7 @@ type GetSession struct {
 }
 
 type Claims struct {
+	IsLoggedIn     bool      `json:"isLoggedIn,omitempty"`
 	Name           string    `json:"name"`
 	Email          string    `json:"email"`
 	EmailVerified  bool      `json:"emailVerified"`
@@ -64,4 +65,12 @@ func (c *Claims) AvatarUrl() string {
 
 func (c *Claims) AvatarAlt() string {
 	return c.Email + "'s avatar"
+}
+
+func (c *Claims) GetFirstLetter() string {
+	runes := []rune(c.Name)
+	if len(runes) > 0 {
+		return string(runes[0])
+	}
+	return ""
 }

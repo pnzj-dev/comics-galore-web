@@ -1,0 +1,140 @@
+package modals
+
+import "comics-galore-web/cmd/web/views/helper"
+
+templ Support() {
+{{ appContext := helper.GetAppContext(ctx) }}
+<div x-data="modalSupport()" class="w-full max-h-[85vh] flex flex-col">
+
+    <div class="mb-6">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Help & Support</h2>
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+            Have an issue? Send us a ticket and our team will get back to you in the messaging center.
+        </p>
+    </div>
+
+    <div class="flex-grow overflow-y-auto custom-scrollbar px-1 pb-4">
+        <form @submit.prevent="submitTicket($el)" class="space-y-6">
+            <div>
+                <label class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 block">What do you need help
+                    with?</label>
+                <div class="grid grid-cols-2 gap-3">
+                    <template x-for="cat in categories">
+                        <button type="button"
+                                @click="category = cat.id"
+                                :class="category === cat.id ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-600' : 'border-gray-200 dark:border-gray-700 hover:border-indigo-300'"
+                                class="flex flex-col items-center p-3 border rounded-xl transition-all text-center">
+                            <span class="text-xl mb-1" x-text="cat.icon"></span>
+                            <span class="text-xs font-medium text-gray-900 dark:text-white" x-text="cat.name"></span>
+                        </button>
+                    </template>
+                </div>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Subject</label>
+                    <input type="text" x-model="messageSubject" required
+                           placeholder="Briefly describe the issue"
+                           class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"/>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Detailed
+                        Description</label>
+                    <textarea rows="5" x-model="messageContent" required
+                              placeholder="Please provide as much detail as possible..."
+                              class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"></textarea>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <div class="cf-turnstile" data-sitekey={appContext.TurnstileSiteKey}
+                     data-callback="onSupportTurnstileSuccess"></div>
+            </div>
+
+            <template x-if="formError">
+                <div class="p-4 text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg dark:bg-red-900/20 dark:text-red-400 dark:border-red-800"
+                     x-text="formError"></div>
+            </template>
+
+            <div class="flex items-center justify-between pt-4">
+                <a href="/messages" class="text-xs text-indigo-600 hover:underline dark:text-indigo-400">View previous
+                    tickets</a>
+                <button type="submit" :disabled="isSubmitting || !turnstileToken || !category"
+                        class="inline-flex items-center px-6 py-2.5 border border-transparent text-sm font-bold rounded-lg shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50">
+                    <span x-show="!isSubmitting">Submit Ticket</span>
+                    <span x-show="isSubmitting" class="flex items-center">
+                            <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle
+                                        class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle><path class="opacity-75" fill="currentColor"
+                                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            Processing...
+                        </span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function onTurnstileSuccess(token) {
+        const el = document.querySelector('[x-data^="modalSupport"]');
+        if (el) Alpine.$data(el).turnstileToken = token;
+    }
+
+    function modalSupport() {
+        return {
+            category: '',
+            messageSubject: '',
+            messageContent: '',
+            turnstileToken: null,
+            isSubmitting: false,
+            formError: '',
+
+            async submitTicket(form) {
+                if (!this.category || !this.messageSubject || !this.messageContent) {
+                    this.formError = "Please fill in all fields.";
+                    return;
+                }
+
+                this.isSubmitting = true;
+                this.formError = '';
+
+                try {
+                    const response = await fetch('/api/v1/support/tickets', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            category: this.category,
+                            subject: this.messageSubject,
+                            content: this.messageContent,
+                            'cf-turnstile-response': this.turnstileToken
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.message || 'Submission failed.');
+                    }
+
+                    // On success: Close and notify
+                    this.$dispatch('modal-close');
+                    // Optional: Trigger a global toast notification
+                    alert("Ticket submitted successfully!");
+
+                    // Reset local state
+                    this.messageSubject = '';
+                    this.messageContent = '';
+                    this.category = '';
+                    if (window.turnstile) window.turnstile.reset();
+
+                } catch (e) {
+                    this.formError = e.message;
+                    if (window.turnstile) window.turnstile.reset();
+                } finally {
+                    this.isSubmitting = false;
+                }
+            }
+        }
+    }
+</script>
+}

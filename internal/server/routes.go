@@ -2,15 +2,16 @@ package server
 
 import (
 	"comics-galore-web/cmd/web"
-	"comics-galore-web/internal/archive"
-	"comics-galore-web/internal/auth"
+	"comics-galore-web/cmd/web/handlers/auth"
+	"comics-galore-web/cmd/web/handlers/modal"
+	"comics-galore-web/cmd/web/handlers/pages"
 	"comics-galore-web/internal/blog"
 	"comics-galore-web/internal/comment"
 	"comics-galore-web/internal/event"
 	"comics-galore-web/internal/messaging"
 	"comics-galore-web/internal/picture"
 	"comics-galore-web/internal/qrcode"
-	"comics-galore-web/internal/view"
+	"comics-galore-web/internal/storage"
 	"comics-galore-web/internal/websocket"
 	"fmt"
 	"github.com/gofiber/fiber/v3"
@@ -21,17 +22,22 @@ import (
 
 func (s *FiberServer) RegisterFiberRoutes(deps *Deps) {
 
-	viewHandler := view.NewHandler(deps.Config, deps.Blog)
+	modalHandler := modal.NewHandler(deps.Config)
+	pagesHandler := pages.NewHandler(deps.Config, deps.Blog)
 	blogHandler := blog.NewHandler(deps.Config, deps.Blog)
 	authHandler := auth.NewHandler(deps.Config, deps.Turnstile)
-	eventHandler := event.NewHandler(deps.Config, deps.Broadcaster)
 	qrcodeHandler := qrcode.NewHandler(deps.Config, deps.QrCode)
+	eventHandler := event.NewHandler(deps.Config, deps.Broadcaster)
+	storageHandler := storage.NewHandler(deps.Config, deps.Storage)
 	commentHandler := comment.NewHandler(deps.Config, deps.Comment)
 	pictureHandler := picture.NewHandler(deps.Config, deps.Picture)
-	archiveHandler := archive.NewHandler(deps.Config, deps.Archive)
 	messagingHandler := messaging.NewHandler(deps.Config, deps.Messaging)
 	websocketHandler := websocket.NewHandler(deps.Config)
 
+	/*s.App.Use(func(c fiber.Ctx) error {
+		c.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; connect-src 'self' https://challenges.cloudflare.com;")
+		return c.Next()
+	})*/
 	s.App.Use(slogfiber.New(deps.Config.GetLogger()))
 
 	/*s.App.Use(slogfiber.NewWithConfig(deps.Config.GetLogger(), slogfiber.Config{
@@ -80,12 +86,13 @@ func (s *FiberServer) RegisterFiberRoutes(deps *Deps) {
 
 	//s.App.Get("/assets/*", static.New("", static.Config{FS: web.Files}))
 
-	viewHandler.RegisterRoutes(s.App)
+	pagesHandler.RegisterRoutes(s.App)
 	authHandler.RegisterRoutes(s.App)
+	modalHandler.RegisterRoutes(s.App)
 	blogHandler.RegisterRoutes(s.App)
 	eventHandler.RegisterRoutes(s.App)
 	qrcodeHandler.RegisterRoutes(s.App)
-	archiveHandler.RegisterRoutes(s.App)
+	storageHandler.RegisterRoutes(s.App)
 	pictureHandler.RegisterRoutes(s.App)
 	commentHandler.RegisterRoutes(s.App)
 	messagingHandler.RegisterRoutes(s.App)

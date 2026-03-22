@@ -50,6 +50,7 @@ func HasSession(cfg config.Service) fiber.Handler {
 		}
 
 		if token != nil && token.Valid {
+			claims.IsLoggedIn = true
 			c.Locals("claims", claims)
 			cfg.GetLogger().Debug("session identified", "user_id", claims.Id)
 		}

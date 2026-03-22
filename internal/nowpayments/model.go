@@ -1,5 +1,7 @@
 package nowpayments
 
+import "time"
+
 type CurrenciesResponse struct {
 	Currencies []string `json:"currencies"`
 }
@@ -51,18 +53,21 @@ const (
 	StatusExpired       Status = "expired"
 )
 
+// PaymentStatus and PaymentNotification are equivalent
 type PaymentStatus struct {
-	PaymentID       string  `json:"payment_id"`
-	PaymentStatus   Status  `json:"payment_status"`
-	PayAddress      string  `json:"pay_address"`
-	PriceAmount     float32 `json:"price_amount"`
-	PriceCurrency   string  `json:"price_currency"`
-	PayAmount       float32 `json:"pay_amount"`
-	ActuallyPaid    float32 `json:"actually_paid"`
-	PayCurrency     string  `json:"pay_currency"`
-	CreatedAt       string  `json:"created_at"`
-	UpdatedAt       string  `json:"updated_at"`
-	PurchaseID      string  `json:"purchase_id"`
-	OutcomeCurrency string  `json:"outcome_currency"`
-	OutcomeAmount   float32 `json:"outcome_amount"`
+	PaymentID        int64     `json:"payment_id"`
+	PaymentStatus    string    `json:"payment_status"`
+	PayAddress       string    `json:"pay_address"`
+	PriceAmount      float64   `json:"price_amount"`
+	PriceCurrency    string    `json:"price_currency"`
+	PayAmount        float64   `json:"pay_amount"`
+	ActuallyPaid     float64   `json:"actually_paid"`
+	PayCurrency      string    `json:"pay_currency"`
+	OrderID          string    `json:"order_id"`
+	OrderDescription string    `json:"order_description"`
+	PurchaseID       string    `json:"purchase_id"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+	OutcomeAmount    float64   `json:"outcome_amount"`
+	OutcomeCurrency  string    `json:"outcome_currency"`
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"comics-galore-web/internal/archive"
 	"comics-galore-web/internal/blog"
 	"comics-galore-web/internal/broadcaster"
 	"comics-galore-web/internal/cloudflare"
@@ -13,6 +12,7 @@ import (
 	"comics-galore-web/internal/picture"
 	"comics-galore-web/internal/qrcode"
 	"comics-galore-web/internal/server"
+	"comics-galore-web/internal/storage"
 	"context"
 	"github.com/gofiber/fiber/v3/log"
 	"os"
@@ -49,7 +49,7 @@ func main() {
 		Blog:        blog.NewService(cfg.GetQuerier(), cfg.GetLogger()),
 		Email:       email.NewService(cfg),
 		QrCode:      qrcode.NewService(cfg),
-		Archive:     archive.NewService(cfg),
+		Storage:     storage.NewService(cfg),
 		Picture:     picture.NewService(cfg, false),
 		Comment:     comment.NewService(cfg, localBroadcaster),
 		Messaging:   messaging.NewService(cfg),

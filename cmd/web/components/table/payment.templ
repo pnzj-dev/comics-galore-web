@@ -1,0 +1,32 @@
+package table
+
+type Payment struct {
+    PayAmount
+}
+
+templ PaymentsTable(payments []Payment, total int) {
+<div x-ref="total" class="hidden">{ total }</div>
+<table class="min-w-full divide-y divide-neutral-200/70">
+    <thead>...</thead>
+    <tbody>
+    if len(payments) == 0 {
+    <tr>
+        <td colspan="6" class="py-8 text-center text-neutral-500">No payments found.</td>
+    </tr>
+    } else {
+    for _, p := range payments {
+    <tr>
+        <td>{ p.ID }</td>
+        <td><a href={fmt.Sprintf("/orders/%d",p.OrderID)}>{p.OrderID}</a></td>
+        <td>{ formatCurrency(p.PayAmount, p.PayCurrency) }</td>
+        <td>
+            <span class={badgeClass(p.PaymentStatus)}>{strings.ToUpper(p.PaymentStatus)}</span>
+        </td>
+        <td>{formatDate(p.CreatedAt)}</td>
+        <td><a href={p.QrCodeURL}>View QR</a></td>
+    </tr>
+    }
+    }
+    </tbody>
+</table>
+}

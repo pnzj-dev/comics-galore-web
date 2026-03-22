@@ -1,0 +1,72 @@
+package form
+
+import "fmt"
+
+templ FileUpload(props FileUploadProps) {
+{{
+errorExpr := props.ErrorPath
+if errorExpr == "" {
+errorExpr = fmt.Sprintf("formErrors.%s", props.Name)
+}
+}}
+<div class="space-y-2" x-data={fmt.Sprintf("fileUploadData('%s','%s')",props.PresignUrl,props.UploadPath)}>
+    if props.Label != "" {
+    <label class="block text-sm font-medium text-gray-700">
+        { props.Label }
+        if props.Required {
+        <span class="text-red-500">*</span>
+        }
+    </label>
+    }
+    <input type="hidden" name={props.Name} x-model="fileKey" required?={props.Required}/>
+    <div class="relative mt-1 flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-6 py-4 transition-colors hover:border-indigo-400">
+        <template x-if="!fileKey">
+            <div class="text-center">
+                <div x-show="!uploading">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"
+                         aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                    <div class="mt-2 flex text-sm text-gray-600">
+                        <label class="relative cursor-pointer rounded-md font-medium text-indigo-600 focus-within:outline-none hover:text-indigo-500">
+                            <span>Upload a file</span>
+                            <input x-ref="fileInput" type="file" class="sr-only" accept={props.Accept}
+                                   @change="handleUpload"/>
+                        </label>
+                    </div>
+                    <p class="text-xs text-gray-500">{ props.Accept }</p>
+                </div>
+
+                <div x-show="uploading" class="w-64">
+                    <div class="mb-1 flex justify-between">
+                        <span class="text-xs font-medium text-indigo-700" x-text="'Uploading ' + fileName"></span>
+                        <span class="text-xs font-medium text-indigo-700" x-text="progress + '%'"></span>
+                    </div>
+                    <div class="h-2 w-full rounded-full bg-gray-200">
+                        <div class="h-2 rounded-full bg-indigo-600 transition-all duration-300"
+                             :style="'width: ' + progress + '%'"></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <template x-if="fileKey">
+            <div class="flex w-full items-center justify-between rounded-md bg-green-50 p-2">
+                <div class="flex items-center space-x-3">
+                    <svg class="h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-sm font-medium text-green-800" x-text="fileName"></span>
+                </div>
+                <button type="button" @click="deleteFile"
+                        class="text-sm font-medium text-red-600 hover:text-red-500">
+                    Delete
+                </button>
+            </div>
+        </template>
+    </div>
+    <p x-show={errorExpr} x-text={errorExpr} class="mt-1 text-sm text-red-600"></p>
+</div>
+}

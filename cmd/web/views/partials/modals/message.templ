@@ -1,0 +1,298 @@
+package modals
+
+import "fmt"
+
+var messageScriptHandle = templ.NewOnceHandle()
+
+templ DirectMessage(currentUserID string) {
+<div x-data={fmt.Sprintf("messagingData('%s')",currentUserID)}
+     class="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-white border border-neutral-200 rounded-xl shadow-sm">
+    <!-- Sidebar: Conversation List -->
+    <aside class="w-1/3 lg:w-1/4 border-r border-neutral-100 flex flex-col bg-neutral-50/50">
+        <div class="p-4 border-b border-neutral-100 bg-white">
+            <h2 class="text-xl font-bold text-neutral-900">Messages</h2>
+            <div class="mt-2 relative">
+                <input type="text"
+                       placeholder="Search conversations..."
+                       class="w-full pl-8 pr-4 py-1.5 text-sm bg-neutral-100 border-none rounded-lg focus:ring-2 focus:ring-indigo-500"/>
+                <svg class="w-4 h-4 absolute left-2.5 top-2 text-neutral-400" fill="none" stroke="currentColor"
+                     viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+        <div class="flex-grow overflow-y-auto">
+            <template x-for="conv in conversations" :key="conv.conversation_id">
+                <button @click="selectConversation(conv)"
+                        class="w-full text-left p-4 flex items-start space-x-3 border-b border-neutral-50 transition-colors hover:bg-white"
+                        :class="activeConversation?.conversation_id === conv.conversation_id ? 'bg-white ring-1 ring-inset ring-indigo-500/10' : ''">
+                    <span class="relative flex-shrink-0 flex">
+                        <span class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-bold">
+                            <span x-text="getInitials(conv.name || 'Group')"></span>
+                        </span>
+                        <template x-if="conv.unread_count > 0">
+                            <span class="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white border-2 border-white"
+                                  x-text="conv.unread_count"></span>
+                        </template>
+                    </span>
+                    <span class="flex-grow min-w-0 block">
+                        <span class="flex justify-between items-baseline">
+                            <span class="font-bold text-sm text-neutral-900 truncate block"
+                                  x-text="conv.name || 'Private Chat'"></span>
+                            <span class="text-[10px] text-neutral-400 whitespace-nowrap"
+                                  x-text="formatTime(conv.last_message_sent_at)"></span>
+                        </span>
+                    <span class="text-xs text-neutral-500 truncate block"
+                          x-text="conv.last_message_content || 'No messages yet'"></span>
+                    </span>
+                </button>
+            </template>
+            <div x-show="conversations.length === 0" class="p-8 text-center text-neutral-400 text-sm italic">
+                No conversations yet.
+            </div>
+        </div>
+    </aside>
+    <!-- Main: Conversation History -->
+    <main class="flex-grow flex flex-col bg-white">
+        <template x-if="!activeConversation">
+            <div class="flex-grow flex flex-col items-center justify-center text-neutral-400 space-y-4">
+                <div class="p-4 bg-neutral-50 rounded-full">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                </div>
+                <p class="font-medium">Select a conversation to start messaging</p>
+            </div>
+        </template>
+        <template x-if="activeConversation">
+            <div class="flex flex-col h-full">
+                <!-- Header -->
+                <div class="p-4 border-b border-neutral-100 flex items-center justify-between shadow-sm">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center text-white font-bold">
+                            <span x-text="getInitials(activeConversation.name || 'Group')"></span>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-neutral-900"
+                                x-text="activeConversation.name || 'Direct Message'"></h2>
+                            <span class="text-[10px] text-green-500 font-medium">Online</span>
+                        </div>
+                    </div>
+                    <button @click="deleteActiveConversation"
+                            class="text-neutral-400 hover:text-red-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                <!-- Message History Area -->
+                <div id="message-scroller" x-ref="messageList"
+                     class="flex-grow overflow-y-auto p-6 space-y-4 bg-neutral-50/30">
+                    <template x-for="msg in messages" :key="msg.id">
+                        <div class="flex flex-col"
+                             :class="msg.sender_id === currentUserId ? 'items-end' : 'items-start'">
+                            <div class="flex items-end space-x-2"
+                                 :class="msg.sender_id === currentUserId ? 'flex-row-reverse space-x-reverse' : 'flex-row'">
+                                <div class="max-w-md px-4 py-2 rounded-2xl text-sm shadow-sm"
+                                     :class="msg.sender_id === currentUserId ? 'bg-indigo-600 text-white rounded-br-none' : 'bg-white text-neutral-800 border border-neutral-100 rounded-bl-none'">
+                                    <p x-text="msg.content"></p>
+                                </div>
+                                <span class="text-[9px] text-neutral-400 font-mono mb-1"
+                                      x-text="formatTime(msg.sent_at)"></span>
+                            </div>
+                            <template x-if="msg.sender_id !== currentUserId">
+                                <span class="text-[10px] text-neutral-400 ml-1 mt-1 font-medium"
+                                      x-text="msg.sender_username"></span>
+                            </template>
+                        </div>
+                    </template>
+                    <div x-show="messages.length === 0" class="text-center py-12 text-neutral-400 text-sm">
+                        No messages in this thread yet. Say hi!
+                    </div>
+                </div>
+                <!-- Footer Input Area -->
+                <div class="p-4 border-t border-neutral-100 bg-white">
+                    <form @submit.prevent="sendMessage" class="flex items-center space-x-4">
+                        <button type="button" class="text-neutral-400 hover:text-indigo-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 4v16m8-8H4" stroke-width="2" stroke-linecap="round"></path>
+                            </svg>
+                        </button>
+                        <input type="text" x-model="newMessage" placeholder="Type your message..."
+                               class="flex-grow p-2.5 bg-neutral-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-indigo-500"/>
+                        <button type="submit" :disabled="!newMessage.trim() || isSending"
+                                class="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 disabled:bg-neutral-200 transition-all shadow-md">
+                            <svg class="w-5 h-5 transform rotate-90" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                            </svg>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </template>
+    </main>
+</div>
+@messageScriptHandle.Once() {
+<script>
+    function messagingData(currentUserId) {
+        return {
+            currentUserId: currentUserId,
+            conversations: [],
+            activeConversation: null,
+            messages: [],
+            newMessage: '',
+            isSending: false,
+            pollingInterval: null,
+
+            async init() {
+                await this.fetchConversations();
+
+                // Poll for new messages every 5 seconds
+                this.pollingInterval = setInterval(() => {
+                    this.fetchConversations();
+                    if (this.activeConversation) {
+                        // Check history but only scroll if new messages arrive
+                        this.fetchHistory(this.activeConversation.conversation_id, true);
+                    }
+                }, 5000);
+            },
+
+            // Crucial: Clear interval when component is removed
+            destroy() {
+                if (this.pollingInterval) clearInterval(this.pollingInterval);
+            },
+
+            async fetchConversations() {
+                try {
+                    const res = await fetch('/api/v1/messaging/conversations');
+                    if (res.ok) {
+                        const data = await res.json();
+                        // Only update if data actually changed to prevent Alpine re-renders
+                        if (JSON.stringify(this.conversations) !== JSON.stringify(data)) {
+                            this.conversations = data;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Inbox failed:", e);
+                }
+            },
+
+            async selectConversation(conv) {
+                // Check if already active to avoid flickering
+                if (this.activeConversation?.conversation_id === conv.conversation_id) return;
+
+                this.activeConversation = conv;
+                this.messages = []; // Clear for loading state feel
+                await this.fetchHistory(conv.conversation_id);
+
+                // Mark as read logic
+                if (conv.unread_count > 0) {
+                    // Optimized: Don't wait for history if we know the ID from the conversation object
+                    await this.markAsRead(conv.conversation_id);
+                }
+            },
+
+            async fetchHistory(convId, isPolling = false) {
+                try {
+                    const res = await fetch(`/api/v1/messaging/conversations/${convId}?limit=50`);
+                    if (res.ok) {
+                        const rawMessages = await res.json();
+                        // Fix: Create new array before reversing to avoid mutating references
+                        const sorted = [...rawMessages].reverse();
+
+                        const hasNewMessages = sorted.length !== this.messages.length;
+
+                        if (hasNewMessages) {
+                            this.messages = sorted;
+                            // If polling and a message arrives, scroll down
+                            if (isPolling || this.isNearBottom()) {
+                                this.scrollToBottom();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("History failed:", e);
+                }
+            },
+
+            async sendMessage() {
+                const trimmed = this.newMessage.trim();
+                if (!trimmed || !this.activeConversation || this.isSending) return;
+
+                this.isSending = true;
+                const content = trimmed;
+                this.newMessage = ''; // Optimistic clear
+
+                try {
+                    const res = await fetch(`/api/v1/messaging/conversations/${this.activeConversation.conversation_id}/messages`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({content})
+                    });
+
+                    if (res.ok) {
+                        await this.fetchHistory(this.activeConversation.conversation_id);
+                        await this.fetchConversations(); // Update sidebar
+                    } else {
+                        // Rollback on failure
+                        this.newMessage = content;
+                    }
+                } catch (e) {
+                    console.error("Send failed:", e);
+                } finally {
+                    this.isSending = false;
+                }
+            },
+
+            async markAsRead(convId) {
+                try {
+                    // Assuming your API handles "mark all in conversation as read"
+                    await fetch(`/api/v1/messaging/conversations/${convId}/read`, {method: 'POST'});
+                    await this.fetchConversations();
+                } catch (e) {
+                    console.error("Mark read failed:", e);
+                }
+            },
+
+            isNearBottom() {
+                const el = this.$refs.messageList;
+                if (!el) return false;
+                // Threshold of 100px from the bottom
+                return (el.scrollHeight - el.scrollTop - el.clientHeight) < 100;
+            },
+
+            scrollToBottom() {
+                this.$nextTick(() => {
+                    const el = this.$refs.messageList;
+                    if (el) {
+                        el.scrollTo({
+                            top: el.scrollHeight,
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            },
+
+            getInitials(name) {
+                if (!name) return '??';
+                return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+            },
+
+            formatTime(isoStr) {
+                if (!isoStr) return '';
+                const d = new Date(isoStr);
+                const now = new Date();
+                // If today, show time. If older, show date.
+                if (d.toDateString() === now.toDateString()) {
+                    return d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', hour12: false});
+                }
+                return d.toLocaleDateString([], {month: 'short', day: 'numeric'});
+            }
+        }
+    }
+</script>
+}
+}

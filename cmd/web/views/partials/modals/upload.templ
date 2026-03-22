@@ -1,0 +1,851 @@
+package modals
+
+
+templ Upload(){
+<div x-data="comicsUpload()" class="max-w-3xl mx-auto px-4 py-10">
+
+    <!-- Header -->
+    <div class="mb-8 flex items-end gap-4">
+        <div>
+            <div class="text-xs font-display tracking-widest text-gray-400 mb-1">COMICS GALORE</div>
+            <h1 style="font-size:3rem;line-height:1" class="font-display">PUBLISH A COMIC</h1>
+        </div>
+        <div class="ml-auto text-right">
+            <div class="badge" style="color:var(--accent)">NEW ISSUE</div>
+        </div>
+    </div>
+
+    <!-- Step indicators -->
+    <div class="panel p-4 mb-6">
+        <div class="step-indicator">
+            <template x-for="(s, i) in steps" :key="i">
+                <template x-if="true">
+                    <div class="flex items-center" style="flex:1">
+                        <div class="step-dot"
+                             :class="{ 'active': currentStep === i+1, 'done': currentStep > i+1 }">
+                            <span x-show="currentStep <= i+1" x-text="i+1"></span>
+                            <span x-show="currentStep > i+1">✓</span>
+                        </div>
+                        <div class="flex-1 flex flex-col items-center px-1" x-show="i < steps.length - 1">
+                            <div class="step-line w-full"></div>
+                        </div>
+                    </div>
+                </template>
+            </template>
+        </div>
+        <div class="flex justify-between mt-3">
+            <template x-for="(s, i) in steps" :key="i">
+                <div class="text-center" style="flex:1">
+                    <div class="font-display text-xs tracking-wide" :class="currentStep === i+1 ? 'text-red-600' : currentStep > i+1 ? 'text-indigo-700' : 'text-gray-400'" x-text="s"></div>
+                </div>
+            </template>
+        </div>
+    </div>
+
+    <!-- ==================== STEP 1: TEXT INFO ==================== -->
+
+    <div x-show="currentStep === 1" class="panel p-6 relative overflow-hidden">
+        <div class="halftone"></div>
+        <div class="relative">
+            <h2 class="font-display text-3xl mb-1">COMIC DETAILS</h2>
+            <p class="text-sm text-gray-500 mb-6">Fill in the information about your comic issue.</p>
+
+            ```
+            <form id="step1-form"
+                  hx-post="/api/comics/validate/info"
+                  hx-target="#step1-errors"
+                  hx-swap="innerHTML"
+                  @htmx:after-request="onStep1Validated($event)"
+                  class="space-y-4">
+
+                <!-- Title -->
+                <div>
+                    <label class="field-label">Title *</label>
+                    <input x-model="form.title" name="title" type="text" placeholder="e.g. The Phantom Strikes Back" class="field-input"
+                           :class="errors.title ? 'border-red-500' : ''" @blur="validateField('title')"/>
+                    <div class="field-error" x-show="errors.title" x-text="errors.title"></div>
+                </div>
+
+                <!-- Author + Artist row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="field-label">Author *</label>
+                        <input x-model="form.author" name="author" type="text" placeholder="e.g. Stan Lee" class="field-input"
+                               :class="errors.author ? 'border-red-500' : ''" @blur="validateField('author')"/>
+                        <div class="field-error" x-show="errors.author" x-text="errors.author"></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Artist</label>
+                        <input x-model="form.artist" name="artist" type="text" placeholder="e.g. Jack Kirby" class="field-input"/>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div>
+                    <label class="field-label">Description *</label>
+                    <textarea x-model="form.description" name="description" rows="3" placeholder="A short summary of the issue…" class="field-input resize-none"
+                              :class="errors.description ? 'border-red-500' : ''" @blur="validateField('description')"></textarea>
+                    <div class="field-error" x-show="errors.description" x-text="errors.description"></div>
+                    <div class="text-xs text-gray-400 mt-1" x-text="`${form.description.length} / 1000`"></div>
+                </div>
+
+                <!-- Category + Genre row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="field-label">Category *</label>
+                        <select x-model="form.category" name="category" class="field-input" :class="errors.category ? 'border-red-500' : ''" @change="validateField('category')">
+                            <option value="">Select category…</option>
+                            <option value="manga">Manga</option>
+                            <option value="comic">Comic Book</option>
+                            <option value="graphic-novel">Graphic Novel</option>
+                            <option value="webtoon">Webtoon</option>
+                            <option value="bd">Bande Dessinée</option>
+                        </select>
+                        <div class="field-error" x-show="errors.category" x-text="errors.category"></div>
+                    </div>
+                    <div>
+                        <label class="field-label">Genre</label>
+                        <select x-model="form.genre" name="genre" class="field-input">
+                            <option value="">Select genre…</option>
+                            <option value="action">Action / Adventure</option>
+                            <option value="horror">Horror</option>
+                            <option value="scifi">Sci-Fi</option>
+                            <option value="fantasy">Fantasy</option>
+                            <option value="romance">Romance</option>
+                            <option value="comedy">Comedy</option>
+                            <option value="mystery">Mystery</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Issue + Year row -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="field-label">Issue #</label>
+                        <input x-model.number="form.issueNumber" name="issue_number" type="number" min="1" placeholder="1" class="field-input"/>
+                    </div>
+                    <div>
+                        <label class="field-label">Year</label>
+                        <input x-model.number="form.year" name="year" type="number" min="1900" :max="new Date().getFullYear()" placeholder="2024" class="field-input"/>
+                    </div>
+                    <div>
+                        <label class="field-label">Pages</label>
+                        <input x-model.number="form.pages" name="pages" type="number" min="1" placeholder="48" class="field-input"/>
+                    </div>
+                </div>
+
+                <!-- Language + Rating row -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="field-label">Language</label>
+                        <select x-model="form.language" name="language" class="field-input">
+                            <option value="en">English</option>
+                            <option value="fr">Français</option>
+                            <option value="ja">Japanese</option>
+                            <option value="es">Spanish</option>
+                            <option value="de">German</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="field-label">Age Rating</label>
+                        <select x-model="form.ageRating" name="age_rating" class="field-input">
+                            <option value="all">All Ages</option>
+                            <option value="teen">Teen (13+)</option>
+                            <option value="mature">Mature (17+)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label class="field-label">Tags <span class="text-gray-400 font-sans text-xs normal-case">(comma separated)</span></label>
+                    <input x-model="form.tagsRaw" name="tags" type="text" placeholder="superhero, dystopia, time-travel" class="field-input"/>
+                </div>
+
+                <div id="step1-errors"></div>
+            </form>
+
+            <div class="flex justify-end mt-6">
+                <button class="btn btn-primary" @click="submitStep1()" :disabled="!isStep1Valid()">
+                    Next: Images →
+                </button>
+            </div>
+        </div>
+        ```
+
+    </div>
+
+    <!-- ==================== STEP 2: IMAGES ==================== -->
+
+    <div x-show="currentStep === 2" class="panel p-6 relative overflow-hidden">
+        <div class="halftone"></div>
+        <div class="relative">
+            <h2 class="font-display text-3xl mb-1">COVER & PREVIEWS</h2>
+            <p class="text-sm text-gray-500 mb-6">Upload the cover image (1) and preview pages (up to 10).</p>
+
+            ```
+            <!-- Global step progress -->
+            <div x-show="imageUpload.uploading" class="mb-6">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-display text-sm tracking-wide">UPLOADING IMAGES</span>
+                    <span class="font-display text-sm" x-text="`${imageUpload.done} / ${imageUpload.total}`"></span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" :style="`width: ${imageUpload.globalProgress}%`"></div>
+                </div>
+            </div>
+
+            <!-- Cover upload -->
+            <div class="mb-6">
+                <label class="field-label">Cover Image * <span class="text-gray-400 font-sans text-xs normal-case">(JPG, PNG, WEBP — max 5MB)</span></label>
+
+                <div x-show="!cover.preview" class="file-drop-zone p-8 text-center"
+                     @click="$refs.coverInput.click()"
+                     @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                     @dragleave="$event.currentTarget.classList.remove('dragover')"
+                     @drop.prevent="handleCoverDrop($event)">
+                    <div class="text-4xl mb-2">🖼️</div>
+                    <p class="font-display tracking-wide text-lg">DROP COVER HERE</p>
+                    <p class="text-xs text-gray-400 mt-1">or click to browse</p>
+                    <input type="file" x-ref="coverInput" class="hidden" accept="image/*" @change="handleCoverSelect($event)"/>
+                </div>
+
+                <!-- Cover preview -->
+                <div x-show="cover.preview" class="flex gap-4 items-start">
+                    <div class="preview-thumb" style="width:120px;flex-shrink:0">
+                        <img :src="cover.preview" alt="Cover preview"/>
+                        <div class="remove-btn" @click="removeCover()">✕</div>
+                        <!-- Per-file progress overlay -->
+                        <div x-show="cover.uploading" class="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                            <span class="text-white font-display text-lg" x-text="`${cover.progress}%`"></span>
+                        </div>
+                        <div x-show="cover.done" class="absolute inset-0 bg-indigo-700 bg-opacity-60 flex items-center justify-center">
+                            <span class="text-white text-2xl">✓</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 pt-2">
+                        <p class="font-display tracking-wide" x-text="cover.file?.name"></p>
+                        <p class="text-xs text-gray-400" x-text="cover.file ? formatBytes(cover.file.size) : ''"></p>
+                        <div x-show="cover.uploading" class="mt-2">
+                            <div class="progress-bar-track">
+                                <div class="progress-bar-fill" :style="`width: ${cover.progress}%`"></div>
+                            </div>
+                        </div>
+                        <p x-show="cover.error" class="field-error mt-1" x-text="cover.error"></p>
+                        <p x-show="cover.done" class="text-xs text-indigo-600 font-medium mt-1">✓ Uploaded</p>
+                    </div>
+                </div>
+                <div class="field-error" x-show="errors.cover" x-text="errors.cover"></div>
+            </div>
+
+            <!-- Preview images -->
+            <div class="mb-6">
+                <label class="field-label">Preview Pages <span class="text-gray-400 font-sans text-xs normal-case">(up to 10 images)</span></label>
+
+                <div x-show="previews.files.length < 10" class="file-drop-zone p-6 text-center mb-4"
+                     @click="$refs.previewsInput.click()"
+                     @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                     @dragleave="$event.currentTarget.classList.remove('dragover')"
+                     @drop.prevent="handlePreviewsDrop($event)">
+                    <div class="text-3xl mb-1">📄</div>
+                    <p class="font-display tracking-wide">ADD PREVIEW PAGES</p>
+                    <p class="text-xs text-gray-400 mt-1" x-text="`${previews.files.length}/10 selected`"></p>
+                    <input type="file" x-ref="previewsInput" class="hidden" accept="image/*" multiple @change="handlePreviewsSelect($event)"/>
+                </div>
+
+                <!-- Preview grid -->
+                <div class="grid grid-cols-5 gap-2" x-show="previews.files.length > 0">
+                    <template x-for="(p, i) in previews.files" :key="i">
+                        <div class="preview-thumb">
+                            <img :src="p.preview" :alt="`Preview ${i+1}`"/>
+                            <div class="remove-btn" @click="removePreview(i)">✕</div>
+                            <div x-show="p.uploading" class="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
+                                <span class="text-white font-display text-sm" x-text="`${p.progress}%`"></span>
+                            </div>
+                            <div x-show="p.done" class="absolute inset-0 bg-indigo-700 bg-opacity-60 flex items-center justify-center">
+                                <span class="text-white text-xl">✓</span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <div class="field-error mt-2" x-show="errors.previews" x-text="errors.previews"></div>
+            </div>
+
+            <div class="flex justify-between mt-6">
+                <button class="btn btn-secondary" @click="currentStep = 1">← Back</button>
+                <button class="btn btn-primary"
+                        @click="uploadAllImages()"
+                        :disabled="imageUpload.uploading || (!cover.file)"
+                        x-text="imageUpload.uploading ? 'UPLOADING...' : allImagesDone() ? 'Next: Archives →' : 'UPLOAD & CONTINUE'">
+                </button>
+            </div>
+        </div>
+        ```
+
+    </div>
+
+    <!-- ==================== STEP 3: ARCHIVES ==================== -->
+
+    <div x-show="currentStep === 3" class="panel p-6 relative overflow-hidden">
+        <div class="halftone"></div>
+        <div class="relative">
+            <h2 class="font-display text-3xl mb-1">COMIC ARCHIVES</h2>
+            <p class="text-sm text-gray-500 mb-6">Upload up to 10 archive files (CBZ, CBR, PDF). These go directly to S3.</p>
+
+            ```
+            <!-- Global step progress -->
+            <div x-show="archiveUpload.uploading || archiveUpload.done > 0" class="mb-6">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="font-display text-sm tracking-wide">UPLOADING TO S3</span>
+                    <span class="font-display text-sm" x-text="`${archiveUpload.done} / ${archiveUpload.total} files`"></span>
+                </div>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" :style="`width: ${archiveUpload.globalProgress}%`"></div>
+                </div>
+            </div>
+
+            <!-- Drop zone -->
+            <div x-show="archives.length < 10" class="file-drop-zone p-8 text-center mb-4"
+                 @click="$refs.archivesInput.click()"
+                 @dragover.prevent="$event.currentTarget.classList.add('dragover')"
+                 @dragleave="$event.currentTarget.classList.remove('dragover')"
+                 @drop.prevent="handleArchivesDrop($event)">
+                <div class="text-4xl mb-2">📦</div>
+                <p class="font-display tracking-wide text-lg">DROP ARCHIVES HERE</p>
+                <p class="text-xs text-gray-400 mt-1">.cbz · .cbr · .pdf · .zip — <span x-text="`${archives.length}/10`"></span> added</p>
+                <input type="file" x-ref="archivesInput" class="hidden" accept=".cbz,.cbr,.pdf,.zip" multiple @change="handleArchivesSelect($event)"/>
+            </div>
+
+            <!-- Archive list -->
+            <div class="space-y-2" x-show="archives.length > 0">
+                <template x-for="(a, i) in archives" :key="i">
+                    <div class="archive-item">
+                        <div class="text-2xl">
+                            <span x-show="a.status === 'idle'">📦</span>
+                            <span x-show="a.status === 'uploading'">⬆️</span>
+                            <span x-show="a.status === 'done'">✅</span>
+                            <span x-show="a.status === 'error'">❌</span>
+                            <span x-show="a.status === 'paused'">⏸️</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="font-medium text-sm truncate" x-text="a.file.name"></p>
+                            <p class="text-xs text-gray-400" x-text="formatBytes(a.file.size)"></p>
+                            <!-- Per-file progress -->
+                            <div x-show="a.status === 'uploading' || a.status === 'paused'" class="mt-1">
+                                <div class="progress-bar-track" style="height:6px">
+                                    <div class="progress-bar-fill" :style="`width: ${a.progress}%`"></div>
+                                </div>
+                                <div class="flex justify-between mt-0.5">
+                                    <span class="text-xs text-gray-400" x-text="`${a.progress}%`"></span>
+                                    <span class="text-xs text-gray-400" x-text="a.status === 'paused' ? 'Paused' : 'Uploading...'"></span>
+                                </div>
+                            </div>
+                            <p x-show="a.status === 'error'" class="field-error mt-1" x-text="a.error"></p>
+                            <p x-show="a.status === 'done'" class="text-xs text-indigo-600 font-medium mt-1">✓ Uploaded to S3</p>
+                        </div>
+                        <!-- Controls -->
+                        <div class="flex gap-1 flex-shrink-0">
+                            <button x-show="a.status === 'uploading'" @click="pauseArchive(i)" class="btn btn-secondary" style="padding:0.3rem 0.6rem;font-size:0.7rem">PAUSE</button>
+                            <button x-show="a.status === 'paused'" @click="resumeArchive(i)" class="btn btn-indigo" style="padding:0.3rem 0.6rem;font-size:0.7rem">RESUME</button>
+                            <button x-show="a.status === 'idle' || a.status === 'error'" @click="removeArchive(i)" class="btn btn-ghost" style="padding:0.3rem 0.5rem;font-size:0.8rem;color:var(--accent)">✕</button>
+                            <button x-show="a.status === 'done'" @click="removeArchive(i)" class="btn btn-ghost" style="padding:0.3rem 0.5rem;font-size:0.8rem;color:#999">✕</button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <div class="field-error mt-2" x-show="errors.archives" x-text="errors.archives"></div>
+
+            <div class="flex justify-between mt-6">
+                <button class="btn btn-secondary" @click="currentStep = 2">← Back</button>
+                <button class="btn btn-primary"
+                        @click="uploadAllArchives()"
+                        :disabled="archiveUpload.uploading || archives.length === 0"
+                        x-text="archiveUpload.uploading ? 'UPLOADING...' : allArchivesDone() ? 'Next: Review →' : 'UPLOAD TO S3 & CONTINUE'">
+                </button>
+            </div>
+        </div>
+        ```
+
+    </div>
+
+    <!-- ==================== STEP 4: REVIEW ==================== -->
+
+    <div x-show="currentStep === 4" class="panel p-6 relative overflow-hidden">
+        <div class="halftone"></div>
+        <div class="relative">
+            <h2 class="font-display text-3xl mb-1">REVIEW & PUBLISH</h2>
+            <p class="text-sm text-gray-500 mb-6">Everything look good? You can clean up text with AI before publishing.</p>
+
+            ```
+            <!-- AI Clean button -->
+            <div class="flex items-center gap-3 mb-6 p-4" style="background:var(--accent2);border:var(--border);box-shadow:var(--shadow)">
+                <span class="text-2xl">✨</span>
+                <div class="flex-1">
+                    <p class="font-display tracking-wide">AI CLEANUP</p>
+                    <p class="text-xs text-gray-700">Let AI fix spelling, grammar and improve your description.</p>
+                </div>
+                <button class="btn btn-primary"
+                        @click="runAiClean()"
+                        :disabled="aiClean.loading"
+                        hx-post="/api/comics/ai-clean"
+                        hx-vals='js:{title: form.title, description: form.description, tags: form.tagsRaw}'
+                        hx-target="#ai-clean-result"
+                        hx-swap="none"
+                        @htmx:after-request="onAiCleanResult($event)">
+                    <span x-show="!aiClean.loading">✨ CLEAN WITH AI</span>
+                    <span x-show="aiClean.loading">CLEANING…</span>
+                </button>
+            </div>
+
+            <!-- AI result preview -->
+            <div id="ai-clean-result"></div>
+            <div x-show="aiClean.result" class="mb-4 p-4" style="background:#f0f9f0;border:2px solid #16a34a;border-radius:2px">
+                <p class="font-display text-sm text-green-700 mb-2 tracking-wide">AI SUGGESTED CHANGES</p>
+                <div class="space-y-2 text-sm">
+                    <div x-show="aiClean.result?.title">
+                        <span class="font-medium">Title: </span><span x-text="aiClean.result?.title"></span>
+                    </div>
+                    <div x-show="aiClean.result?.description">
+                        <span class="font-medium">Description: </span><span x-text="aiClean.result?.description"></span>
+                    </div>
+                    <div x-show="aiClean.result?.tags">
+                        <span class="font-medium">Tags: </span><span x-text="aiClean.result?.tags"></span>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button class="btn btn-indigo" style="font-size:0.8rem;padding:0.3rem 0.8rem" @click="applyAiClean()">APPLY</button>
+                    <button class="btn btn-secondary" style="font-size:0.8rem;padding:0.3rem 0.8rem" @click="aiClean.result = null">DISMISS</button>
+                </div>
+            </div>
+
+            <!-- Review sections -->
+            <div class="space-y-4">
+
+                <!-- Text info -->
+                <div class="review-section">
+                    <div class="review-section-header flex justify-between items-center">
+                        <span>📝 COMIC INFO</span>
+                        <button class="text-xs text-gray-300 hover:text-white font-sans" @click="currentStep = 1">edit</button>
+                    </div>
+                    <div class="review-section-body grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">TITLE</span><p x-text="form.title" :class="aiClean.loading ? 'ai-shimmer rounded' : ''"></p></div>
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">AUTHOR</span><p x-text="form.author"></p></div>
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">ARTIST</span><p x-text="form.artist || '—'"></p></div>
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">CATEGORY</span><p x-text="form.category"></p></div>
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">GENRE</span><p x-text="form.genre || '—'"></p></div>
+                        <div><span class="font-display text-xs tracking-wide text-gray-400">LANGUAGE</span><p x-text="form.language"></p></div>
+                        <div class="col-span-2"><span class="font-display text-xs tracking-wide text-gray-400">DESCRIPTION</span><p x-text="form.description" :class="aiClean.loading ? 'ai-shimmer rounded' : ''"></p></div>
+                        <div class="col-span-2"><span class="font-display text-xs tracking-wide text-gray-400">TAGS</span><p x-text="form.tagsRaw || '—'" :class="aiClean.loading ? 'ai-shimmer rounded' : ''"></p></div>
+                    </div>
+                </div>
+
+                <!-- Images -->
+                <div class="review-section">
+                    <div class="review-section-header flex justify-between items-center">
+                        <span>🖼️ IMAGES</span>
+                        <button class="text-xs text-gray-300 hover:text-white font-sans" @click="currentStep = 2">edit</button>
+                    </div>
+                    <div class="review-section-body">
+                        <div class="flex gap-3 flex-wrap">
+                            <div x-show="cover.preview" class="text-center">
+                                <div class="preview-thumb" style="width:70px">
+                                    <img :src="cover.preview"/>
+                                </div>
+                                <p class="text-xs mt-1 font-display tracking-wide" style="color:var(--accent)">COVER</p>
+                            </div>
+                            <template x-for="(p, i) in previews.files" :key="i">
+                                <div class="text-center">
+                                    <div class="preview-thumb" style="width:70px">
+                                        <img :src="p.preview"/>
+                                    </div>
+                                    <p class="text-xs mt-1 text-gray-400" x-text="`P${i+1}`"></p>
+                                </div>
+                            </template>
+                        </div>
+                        <p x-show="!cover.preview" class="text-sm text-gray-400">No images uploaded.</p>
+                    </div>
+                </div>
+
+                <!-- Archives -->
+                <div class="review-section">
+                    <div class="review-section-header flex justify-between items-center">
+                        <span>📦 ARCHIVES</span>
+                        <button class="text-xs text-gray-300 hover:text-white font-sans" @click="currentStep = 3">edit</button>
+                    </div>
+                    <div class="review-section-body">
+                        <div x-show="archives.length === 0" class="text-sm text-gray-400">No archives uploaded.</div>
+                        <div class="space-y-1">
+                            <template x-for="(a, i) in archives" :key="i">
+                                <div class="flex items-center gap-3 text-sm">
+                                    <span x-text="a.status === 'done' ? '✅' : '⚠️'"></span>
+                                    <span x-text="a.file.name" class="flex-1 truncate"></span>
+                                    <span class="text-gray-400" x-text="formatBytes(a.file.size)"></span>
+                                    <span class="badge" :style="a.status === 'done' ? 'color:#16a34a' : 'color:var(--accent)'" x-text="a.status.toUpperCase()"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Publish -->
+            <div class="flex justify-between mt-8">
+                <button class="btn btn-secondary" @click="currentStep = 3">← Back</button>
+                <button class="btn btn-primary"
+                        style="font-size:1.1rem;padding:0.7rem 2rem"
+                        @click="publish()"
+                        :disabled="publishing"
+                        hx-post="/api/comics/publish"
+                        hx-vals="js:buildPublishPayload()"
+                        hx-target="#publish-result"
+                        hx-swap="innerHTML">
+                    <span x-show="!publishing">🚀 PUBLISH COMIC</span>
+                    <span x-show="publishing">PUBLISHING…</span>
+                </button>
+            </div>
+
+            <div id="publish-result" class="mt-4"></div>
+        </div>
+        ```
+
+    </div>
+
+</div>
+
+<script>
+    function comicUpload() {
+        return {
+            currentStep: 1,
+            steps: ['INFO', 'IMAGES', 'ARCHIVES', 'REVIEW'],
+            publishing: false,
+
+            form: {
+                title: '', author: '', artist: '', description: '',
+                category: '', genre: '', issueNumber: null,
+                year: null, pages: null, language: 'en',
+                ageRating: 'all', tagsRaw: '',
+            },
+
+            errors: {},
+
+            cover: { file: null, preview: null, progress: 0, uploading: false, done: false, error: null,
+                cloudflareId: null, s3Key: null },
+
+            previews: { files: [] },
+
+            imageUpload: { uploading: false, done: 0, total: 0, globalProgress: 0 },
+
+            archives: [],
+            archiveUpload: { uploading: false, done: 0, total: 0, globalProgress: 0 },
+
+            aiClean: { loading: false, result: null },
+
+            // ---- VALIDATION ----
+            validateField(field) {
+                const rules = {
+                    title:       v => v.trim().length < 2   ? 'Title must be at least 2 characters.' : null,
+                    author:      v => v.trim().length < 2   ? 'Author is required.' : null,
+                    description: v => v.trim().length < 10  ? 'Description must be at least 10 characters.' : null,
+                    category:    v => !v                     ? 'Please select a category.' : null,
+                };
+                const check = rules[field];
+                if (check) {
+                    const msg = check(this.form[field] ?? '');
+                    if (msg) this.errors[field] = msg;
+                    else delete this.errors[field];
+                }
+            },
+
+            isStep1Valid() {
+                return this.form.title.trim().length >= 2
+                    && this.form.author.trim().length >= 2
+                    && this.form.description.trim().length >= 10
+                    && this.form.category !== '';
+            },
+
+            // ---- STEP 1 ----
+            submitStep1() {
+                ['title','author','description','category'].forEach(f => this.validateField(f));
+                if (!this.isStep1Valid()) return;
+                // HTMX will validate server-side; on success advance
+                // For demo, advance directly
+                this.currentStep = 2;
+            },
+
+            onStep1Validated(event) {
+                if (event.detail.xhr.status === 200) this.currentStep = 2;
+            },
+
+            // ---- COVER ----
+            handleCoverSelect(event) {
+                const file = event.target.files[0];
+                if (file) this.setCover(file);
+            },
+            handleCoverDrop(event) {
+                const file = event.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) this.setCover(file);
+            },
+            setCover(file) {
+                if (file.size > 5 * 1024 * 1024) { this.errors.cover = 'Cover must be under 5MB.'; return; }
+                delete this.errors.cover;
+                this.cover.file = file;
+                this.cover.preview = URL.createObjectURL(file);
+                this.cover.done = false;
+                this.cover.progress = 0;
+            },
+            removeCover() {
+                this.cover = { file: null, preview: null, progress: 0, uploading: false, done: false, error: null };
+            },
+
+            // ---- PREVIEW IMAGES ----
+            handlePreviewsSelect(event) {
+                Array.from(event.target.files).forEach(f => this.addPreview(f));
+            },
+            handlePreviewsDrop(event) {
+                Array.from(event.dataTransfer.files).filter(f => f.type.startsWith('image/')).forEach(f => this.addPreview(f));
+            },
+            addPreview(file) {
+                if (this.previews.files.length >= 10) return;
+                this.previews.files.push({
+                    file, preview: URL.createObjectURL(file),
+                    progress: 0, uploading: false, done: false, error: null
+                });
+            },
+            removePreview(i) { this.previews.files.splice(i, 1); },
+
+            // ---- UPLOAD IMAGES ----
+            async uploadAllImages() {
+                if (this.allImagesDone()) { this.currentStep = 3; return; }
+
+                const toUpload = [];
+                if (this.cover.file && !this.cover.done) toUpload.push({ type: 'cover', ref: this.cover });
+                this.previews.files.filter(p => !p.done).forEach(p => toUpload.push({ type: 'preview', ref: p }));
+
+                if (toUpload.length === 0) { this.currentStep = 3; return; }
+
+                this.imageUpload.uploading = true;
+                this.imageUpload.total = toUpload.length;
+                this.imageUpload.done = 0;
+
+                for (const item of toUpload) {
+                    await this.uploadImage(item.ref);
+                    this.imageUpload.done++;
+                    this.imageUpload.globalProgress = Math.round((this.imageUpload.done / this.imageUpload.total) * 100);
+                }
+
+                this.imageUpload.uploading = false;
+                if (this.cover.done) this.currentStep = 3;
+            },
+
+            async uploadImage(ref) {
+                ref.uploading = true;
+                ref.error = null;
+
+                // Simulate upload to backend (replace with real fetch + FormData)
+                // const formData = new FormData();
+                // formData.append('file', ref.file);
+                // const res = await fetch('/api/images/upload', { method: 'POST', body: formData });
+                // const data = await res.json();
+                // ref.cloudflareId = data.cloudflare_image_id;
+                // ref.s3Key = data.backup_s3_key;
+
+                // Demo: simulate progress
+                await new Promise(resolve => {
+                    let p = 0;
+                    const interval = setInterval(() => {
+                        p += Math.random() * 20;
+                        ref.progress = Math.min(Math.round(p), 99);
+                        if (p >= 100) {
+                            clearInterval(interval);
+                            ref.progress = 100;
+                            ref.uploading = false;
+                            ref.done = true;
+                            ref.cloudflareId = 'cf_' + Math.random().toString(36).slice(2);
+                            ref.s3Key = 'comics/' + ref.file.name;
+                            resolve();
+                        }
+                    }, 150);
+                });
+            },
+
+            allImagesDone() {
+                return this.cover.done;
+            },
+
+            // ---- ARCHIVES ----
+            handleArchivesSelect(event) {
+                Array.from(event.target.files).forEach(f => this.addArchive(f));
+            },
+            handleArchivesDrop(event) {
+                Array.from(event.dataTransfer.files).forEach(f => this.addArchive(f));
+            },
+            addArchive(file) {
+                if (this.archives.length >= 10) return;
+                this.archives.push({
+                    file, progress: 0, status: 'idle', error: null, tusUpload: null, s3Key: null
+                });
+            },
+            removeArchive(i) {
+                const a = this.archives[i];
+                if (a.tusUpload) a.tusUpload.abort();
+                this.archives.splice(i, 1);
+            },
+            pauseArchive(i) {
+                const a = this.archives[i];
+                if (a.tusUpload) { a.tusUpload.abort(); a.status = 'paused'; }
+            },
+            resumeArchive(i) {
+                const a = this.archives[i];
+                if (a.tusUpload) { a.tusUpload.start(); a.status = 'uploading'; }
+            },
+
+            async uploadAllArchives() {
+                if (this.allArchivesDone()) { this.currentStep = 4; return; }
+
+                const pending = this.archives.filter(a => a.status === 'idle' || a.status === 'error');
+                if (pending.length === 0) { this.currentStep = 4; return; }
+
+                this.archiveUpload.uploading = true;
+                this.archiveUpload.total = pending.length;
+                this.archiveUpload.done = 0;
+
+                for (const archive of pending) {
+                    await this.uploadArchiveTus(archive);
+                    this.archiveUpload.done++;
+                    this.archiveUpload.globalProgress = Math.round(
+                        (this.archives.filter(a => a.status === 'done').length / this.archives.length) * 100
+                    );
+                }
+
+                this.archiveUpload.uploading = false;
+                if (this.allArchivesDone()) this.currentStep = 4;
+            },
+
+            async uploadArchiveTus(archive) {
+                return new Promise(async (resolve, reject) => {
+                    // 1. Get presigned URL from backend
+                    // const res = await fetch('/api/archives/presign', {
+                    //   method: 'POST',
+                    //   headers: { 'Content-Type': 'application/json' },
+                    //   body: JSON.stringify({ filename: archive.file.name, contentType: archive.file.type })
+                    // });
+                    // const { url, key } = await res.json();
+                    // archive.s3Key = key;
+
+                    // Demo: simulate with tus upload (no real server)
+                    archive.status = 'uploading';
+
+                    // In production, use:
+                    // archive.tusUpload = new tus.Upload(archive.file, {
+                    //   uploadUrl: url,
+                    //   retryDelays: [0, 1000, 3000, 5000],
+                    //   onError(err) { archive.status = 'error'; archive.error = err.message; reject(err); },
+                    //   onProgress(loaded, total) { archive.progress = Math.round((loaded / total) * 100); },
+                    //   onSuccess() { archive.status = 'done'; resolve(); }
+                    // });
+                    // archive.tusUpload.start();
+
+                    // Demo: simulate tus upload progress
+                    await new Promise(res2 => {
+                        let p = 0;
+                        const iv = setInterval(() => {
+                            p += Math.random() * 15;
+                            archive.progress = Math.min(Math.round(p), 99);
+                            if (p >= 100) {
+                                clearInterval(iv);
+                                archive.progress = 100;
+                                archive.status = 'done';
+                                archive.s3Key = `archives/${archive.file.name}`;
+                                res2();
+                            }
+                        }, 200);
+                    });
+                    resolve();
+                });
+            },
+
+            allArchivesDone() {
+                return this.archives.length > 0 && this.archives.every(a => a.status === 'done');
+            },
+
+            // ---- AI CLEAN ----
+            async runAiClean() {
+                this.aiClean.loading = true;
+                this.aiClean.result = null;
+
+                // Demo: simulate AI response (HTMX will fire real request)
+                await new Promise(r => setTimeout(r, 1800));
+                this.aiClean.result = {
+                    title: this.form.title ? this.form.title.trim() : null,
+                    description: this.form.description ? this.form.description.trim() + ' [AI improved]' : null,
+                    tags: this.form.tagsRaw ? this.form.tagsRaw.toLowerCase().replace(/\s+/g,'') : null,
+                };
+                this.aiClean.loading = false;
+            },
+
+            onAiCleanResult(event) {
+                this.aiClean.loading = false;
+                try {
+                    this.aiClean.result = JSON.parse(event.detail.xhr.responseText);
+                } catch(e) {}
+            },
+
+            applyAiClean() {
+                if (this.aiClean.result?.title) this.form.title = this.aiClean.result.title;
+                if (this.aiClean.result?.description) this.form.description = this.aiClean.result.description;
+                if (this.aiClean.result?.tags) this.form.tagsRaw = this.aiClean.result.tags;
+                this.aiClean.result = null;
+            },
+
+            // ---- PUBLISH ----
+            buildPublishPayload() {
+                return JSON.stringify({
+                    ...this.form,
+                    tags: this.form.tagsRaw.split(',').map(t => t.trim()).filter(Boolean),
+                    coverCloudflareId: this.cover.cloudflareId,
+                    coverS3Key: this.cover.s3Key,
+                    previewIds: this.previews.files.map(p => p.cloudflareId),
+                    archiveKeys: this.archives.map(a => a.s3Key),
+                });
+            },
+
+            publish() {
+                this.publishing = true;
+                // HTMX handles the actual POST; this flag is for UI
+                setTimeout(() => { this.publishing = false; }, 3000);
+            },
+
+            // ---- UTILS ----
+            formatBytes(bytes) {
+                if (bytes < 1024) return bytes + ' B';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            },
+        };
+    }
+</script>
+<!-- @Layout("New Post", nav) {
+    <form hx-post="/api/posts" hx-ext="json-enc">
+        @form.FileUpload(form.FileUploadProps{
+            Name:       "cover_key",
+            Label:      "Cover Image",
+            Accept:     "image/*",
+            PresignUrl: "/api/upload/presign",
+            UploadPath: "form.cover",
+        })
+
+        @form.FileUpload(form.FileUploadProps{
+            Name:       "avatar_key",
+            Label:      "Author Avatar",
+            Accept:     "image/png,image/jpeg",
+            PresignUrl: "/api/upload/presign",
+            UploadPath: "form.author.avatar",
+        })
+
+        <button type="submit" class="btn-primary">Submit Post</button>
+    </form>
+} -->
+}
+

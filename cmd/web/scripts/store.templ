@@ -4,7 +4,7 @@ var storeScriptHandle = templ.NewOnceHandle()
 
 templ StoreScript() {
 @storeScriptHandle.Once() {
-<script defer>
+<script>
     document.addEventListener('alpine:init', () => {
         // 1. Define the Global State Store (e.g., for i18n)
         Alpine.store('i18n', {
@@ -104,6 +104,25 @@ templ StoreScript() {
         // 3. Initialize any store setup that needs to run immediately
         //Alpine.store('i18n').init(); // Assuming your i18n store has an init function
 
+        Alpine.store('ui', {
+            modal: {
+                open: false,
+                size: 'auto',
+                title: 'Modal',
+                loading: false,
+                isDirty: false,
+                initialDate: "",
+                confirmClose: false,
+                closeOnBackdrop: true,
+
+                // Function to check if data actually changed
+                isActuallyDirty: () => {
+                    if (!$store.ui.modal.confirmClose) return false;
+                    const currentData = JSON.stringify(Object.fromEntries(new FormData(document.querySelector('#modal-content form'))));
+                    return currentData !== $store.ui.modal.initialData;
+                }
+            }
+        })
     });
 </script>
 }

@@ -1,0 +1,266 @@
+package details
+
+import "fmt"
+import "comics-galore-web/internal/blog"
+import "comics-galore-web/internal/auth"
+import "comics-galore-web/cmd/web/components/comment"
+
+
+templ Details(post *blog.Post, relatedPosts []blog.Post, user *auth.Claims, variants map[string]string) {
+@script()
+{{
+variantsJSON,_ := templ.JSONString(variants)
+previewsJSON,_ := templ.JSONString(post.Previews)
+}}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="lg:col-span-5"
+             x-data={fmt.Sprintf("imagesData('%s',%s,%s)","https://imagedelivery.net",variantsJSON,previewsJSON)}>
+            <div x-show="isFullscreenOpen"
+                 x-cloak
+                 class="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 transition-opacity"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"
+                 @click.outside="isFullscreenOpen = false"
+                 @keydown.escape.window="isFullscreenOpen = false"
+                 @keydown.arrow-left.window="if (isFullscreenOpen) activeIndex = activeIndex === 0 ? images.length - 1 : activeIndex - 1"
+                 @keydown.arrow-right.window="if (isFullscreenOpen) activeIndex = activeIndex === images.length - 1 ? 0 : activeIndex + 1"
+                 @click.outside="isFullscreenOpen = false">
+                <div class="relative h-full w-full max-w-6xl max-h-full">
+                    <!-- Close Button -->
+                    <button @click="isFullscreenOpen = false"
+                            class="absolute top-4 right-4 text-white z-50 p-2 rounded-full bg-black/50 hover:bg-black/80"
+                            aria-label="Close fullscreen">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="2"
+                             stroke="currentColor"
+                             class="w-8 h-8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                    <!-- Image Display (Uses 'view' type in getUrl) -->
+                    <div class="relative h-full w-full flex items-center justify-center">
+                        <div x-show="isLoading"
+                             class="absolute inset-0 flex items-center justify-center bg-black/20 z-10">
+                            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+                        </div>
+                        <img :src="getUrl('view', images[activeIndex].cloudflare_id)"
+                             loading="lazy" @load="onLoad()" @error="onError()"
+                             onerror="this.src='/assets/images/image-error-placeholder.svg';this.onerror='';"
+                             class="max-h-full max-w-full object-contain" alt="Main view"/>
+                    </div>
+                    <!-- Navigation Arrows -->
+                    <button @click="activeIndex = activeIndex === 0 ? images.length - 1 : activeIndex - 1"
+                            class="absolute left-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/50 hover:bg-black/80 transition-colors"
+                            aria-label="Previous image">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="w-8 h-8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path>
+                        </svg>
+                    </button>
+                    <button @click="activeIndex = activeIndex === images.length - 1 ? 0 : activeIndex + 1"
+                            class="absolute right-4 top-1/2 -translate-y-1/2 text-white p-3 rounded-full bg-black/50 hover:bg-black/80 transition-colors"
+                            aria-label="Next image">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke-width="1.5"
+                             stroke="currentColor"
+                             class="w-8 h-8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
+                        </svg>
+                    </button>
+                    <!-- Counter -->
+                    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 text-white text-base px-3 py-1 rounded">
+                        <span x-text="activeIndex + 1"></span> / <span x-text="images.length"></span>
+                    </div>
+                </div>
+            </div>
+            <!-- END NEW: Fullscreen Modal -->
+            <div class="relative aspect-[2/3] w-full overflow-hidden rounded-lg bg-gray-100 shadow-lg group">
+                <!-- Main Cover Image (Uses 'preview' type in getUrl) -->
+                <img :src="getUrl('preview', images[activeIndex].cloudflare_id)"
+                     loading="lazy" onerror="this.src='/assets/images/image-error-placeholder.svg';this.onerror='';"
+                     class="h-full w-full object-cover object-center transition-all duration-300" alt="Previews"/>
+                <!-- Fullscreen Toggle Button on Main Cover -->
+                <button @click="isFullscreenOpen = true"
+                        class="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="View fullscreen">
+                    <svg class="w-5 h-5"
+                         fill="none"
+                         stroke="currentColor"
+                         viewBox="0 0 24 24"
+                         xmlns="http://www.w3.org/2000/svg">
+                        <path fill-rule="evenodd"
+                              clip-rule="evenodd"
+                              d="M18 4.654v.291a10 10 0 0 0-1.763 1.404l-2.944 2.944a1 1 0 0 0 1.414 1.414l2.933-2.932A9.995 9.995 0 0 0 19.05 6h.296l-.09.39A9.998 9.998 0 0 0 19 8.64v.857a1 1 0 1 0 2 0V4.503a1.5 1.5 0 0 0-1.5-1.5L14.5 3a1 1 0 1 0 0 2h.861a10 10 0 0 0 2.249-.256l.39-.09zM4.95 18a10 10 0 0 1 1.41-1.775l2.933-2.932a1 1 0 0 1 1.414 1.414l-2.944 2.944A9.998 9.998 0 0 1 6 19.055v.291l.39-.09A9.998 9.998 0 0 1 8.64 19H9.5a1 1 0 1 1 0 2l-5-.003a1.5 1.5 0 0 1-1.5-1.5V14.5a1 1 0 1 1 2 0v.861a10 10 0 0 1-.256 2.249l-.09.39h.295z"
+                              fill="#ffffff">
+                        </path>
+                    </svg>
+                </button>
+                <button @click="activeIndex = activeIndex === 0 ? images.length - 1 : activeIndex - 1"
+                        class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Previous image">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"></path>
+                    </svg>
+                </button>
+                <button @click="activeIndex = activeIndex === images.length - 1 ? 0 : activeIndex + 1"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        aria-label="Next image">
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         fill="none"
+                         viewBox="0 0 24 24"
+                         stroke-width="1.5"
+                         stroke="currentColor"
+                         class="w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"></path>
+                    </svg>
+                </button>
+                <div class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                    <span x-text="activeIndex + 1"></span> / <span x-text="images.length"></span>
+                </div>
+            </div>
+            <div class="mt-4 grid grid-cols-5 gap-2 overflow-x-auto pb-2">
+                <template x-for="(img, index) in images" :key="index">
+                    <button @click="activeIndex = index"
+                            class="relative aspect-[2/3] overflow-hidden rounded cursor-pointer border-2 transition-all"
+                            :class="activeIndex === index ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-transparent hover:border-gray-300'">
+                        <!-- Thumbnail Image (Uses 'preview' type in getUrl) -->
+                        <img :src="getUrl('thumbnail', img.cloudflare_id)"
+                             loading="lazy"
+                             class="h-full w-full object-cover"
+                             onerror="this.src='/assets/images/image-error-placeholder.svg';this.onerror='';" alt=""/>
+                    </button>
+                </template>
+            </div>
+        </div>
+        <div class="lg:col-span-7 flex flex-col h-full">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 tracking-tight sm:text-4xl">{ post.Title }</h1>
+                <div class="mt-2 flex items-center text-sm text-gray-500 space-x-4">
+                    <span class="font-medium text-indigo-600">{ post.AuthorName }</span>
+                    <span>&bull;</span>
+                    <span>{ post.CategoryName }</span>
+                    <span>&bull;</span>
+                    <span class="uppercase">{ post.LanguageCode }</span>
+                    <span>&bull;</span>
+                    <span>{ post.FormatCreatedAt() }</span>
+                </div>
+                <div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4 border-y border-gray-200 py-4">
+                    <div class="flex flex-col items-center justify-center border-r border-gray-200 last:border-0">
+                        <div class="flex items-center space-x-0.5">
+                            for i := 1; i <= 5; i++ {
+                            <div class={post.StarClass(i)}>
+                                <svg class="fill-current" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                                </svg>
+                            </div>
+                            }
+                        </div>
+                        <span class="text-xs text-gray-500 mt-1">{ post.FormatRating() } / 5.0</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center border-r border-gray-200 last:border-0">
+                        <span class="text-lg font-semibold text-gray-900">{ post.TotalViewCount() }</span>
+                        <span class="text-xs text-gray-500">Views</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center border-r border-gray-200 last:border-0">
+                        <span class="text-lg font-semibold text-gray-900">{ fmt.Sprintf("%d", post.Pages) }</span>
+                        <span class="text-xs text-gray-500">Pages</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center">
+                        <span class="text-lg font-semibold text-gray-900">{ post.FormatFileSize() }</span>
+                        <span class="text-xs text-gray-500">Size</span>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    if user != nil {
+                    <button class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg transition-colors shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg"
+                             class="h-6 w-6 mr-2"
+                             fill="none"
+                             viewBox="0 0 24 24"
+                             stroke="currentColor">
+                            <path stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4">
+                            </path>
+                        </svg>
+                        Download Comic
+                    </button>
+                    } else {
+                    <div class="group relative w-full">
+                        <button disabled
+                                class="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-gray-500 bg-gray-200 cursor-not-allowed">
+                            <svg xmlns="http://www.w3.org/2000/svg"
+                                 class="h-6 w-6 mr-2"
+                                 fill="none"
+                                 viewBox="0 0 24 24"
+                                 stroke="currentColor">
+                                <path stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                                </path>
+                            </svg>
+                            Download Restricted
+                        </button>
+                        <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 px-3 py-1 text-sm text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                            Please login to download
+                        </div>
+                    </div>
+                    }
+                </div>
+                <div class="mt-8 w-full bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg h-32 flex items-center justify-center relative overflow-hidden">
+                    <span class="text-gray-400 text-sm font-medium uppercase tracking-wider">Advertisement Space</span>
+                </div>
+                <div class="mt-8 prose prose-indigo text-gray-500">
+                    <h3 class="text-sm font-medium text-gray-900">Description</h3>
+                    <div class="mt-2">
+                        { post.Description }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <hr class="my-12 border-gray-200"/>
+    <section>
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">You Might Also Like</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+            for _, related := range relatedPosts {
+            <a href={templ.SafeURL(fmt.Sprintf("/post/%s/%s",related.ID,related.Slug()))} class="group">
+                <div class="aspect-[2/3] w-full overflow-hidden rounded-md bg-gray-200 shadow-sm group-hover:shadow-md transition-all">
+                    <img src={related.GetThumbnailUrl()} alt={related.Title} loading="lazy"
+                         class="h-full w-full object-cover object-center group-hover:scale-105 transition-transform duration-300"/>
+                </div>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                    {related.Title}
+                </h3>
+            </a>
+            }
+        </div>
+    </section>
+    <hr class="my-12 border-gray-200"/>
+    if user != nil {
+    <section class="max-w-4xl">
+        @comment.Section(post.ID, user)
+    </section>
+    }
+</div>
+}

@@ -1,0 +1,40 @@
+package dialog
+
+import "comics-galore-web/cmd/web/components/icons"
+
+templ Header(props HeaderProps) {
+<div class="flex items-center justify-between mb-4">
+    if props.Icon {
+    <img src="/assets/images/logo_compact.png" alt="Comics Galore" class="mx-auto"/>
+    }
+    else if props.Title != "" {
+    <h2 class="text-xl font-semibold text-gray-900 mx-auto">
+        { props.Title }
+    </h2>
+    }
+    if props.ShowClose {
+    <button type="button" aria-label="Close modal" @click="$store.ui.modal.open = false"
+            class="text-gray-500 hover:text-gray-700 focus:outline-none rounded-full p-1 transition">
+        @icons.Close(icons.IconProps{Size: "default", Class: ""})
+    </button>
+    }
+</div>
+}
+
+templ HeaderWithSubtitle(title string, subtitle string, showClose bool) {
+<div class="flex items-center justify-between px-6 py-4">
+    <div>
+        <h2 class="text-xl font-semibold text-gray-900">{ title }</h2>
+        if subtitle != "" {
+        <p class="mt-1 text-sm text-gray-500">{ subtitle }</p>
+        }
+    </div>
+    if showClose {
+    <button type="button" @click="$store.ui.modal.open = false" aria-label="Close modal"
+            class="text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-full p-1 transition">
+        @icons.Close(icons.IconProps{Size: "default", Class: ""})
+    </button>
+    }
+</div>
+
+}

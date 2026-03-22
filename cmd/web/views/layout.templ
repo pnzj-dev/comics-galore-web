@@ -1,0 +1,38 @@
+package views
+
+import "comics-galore-web/cmd/web/components/dialog"
+import "comics-galore-web/cmd/web/scripts"
+import "comics-galore-web/cmd/web/views/helper"
+
+templ Layout() {
+{{appContext := helper.GetAppContext(ctx)}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{ appContext.Title }</title>
+    <link href="/assets/css/output.css" rel="stylesheet"/>
+    <link href="/assets/css/global.css" rel="stylesheet"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
+    <script defer src="/assets/js/htmx.min.js"></script>
+    if appContext.TurnstileSiteKey != "" && appContext.TurnstileEnabled {
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
+    <link href="https://challenges.cloudflare.com" rel="preconnect"/>
+    }
+    @scripts.GlobalScript(appContext.TurnstileSiteKey)
+    @scripts.StoreScript()
+    @scripts.UploadScript()
+</head>
+<!--suppress XmlUnboundNsPrefix -->
+<body x-data={layoutXData(ModalDefaults{Size:"lg",Title:"Comics-Galore"})} x-init={layoutXInit()}
+      x-bind:class="ui.modal.open ? 'overflow-hidden' : ''" class="bg-gray-50 min-h-screen">
+<div x-data="{form: { cover: '', previews: [] }, formErrors: {}}">
+    { children... }
+    @dialog.Dialog()
+</div>
+</body>
+</html>
+}

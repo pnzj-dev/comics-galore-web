@@ -1,0 +1,24 @@
+package pages
+
+import "comics-galore-web/cmd/web/views"
+import "comics-galore-web/cmd/web/views/partials/pages"
+import "comics-galore-web/cmd/web/components/footer"
+import "comics-galore-web/cmd/web/components/header"
+import "comics-galore-web/cmd/web/components/pagination"
+import "comics-galore-web/internal/blog"
+import "comics-galore-web/cmd/web/views/helper"
+
+templ Home(posts []blog.Post, navItems []header.NavItem, paginationProps pagination.Props){
+@views.Layout(){
+{{ appContext := helper.GetAppContext(ctx)}}
+<div class="flex flex-col flex-grow w-full">
+    @header.Header(appContext.Claims, navItems)
+    <main class="flex-grow items-center justify-between w-full max-w-7xl mx-auto py-4">
+        @pages.PostsPage(posts, paginationProps)
+    </main>
+    @footer.Footer(footerSection, footerLink)
+</div>
+}
+}
+
+

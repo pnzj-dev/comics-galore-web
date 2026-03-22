@@ -27,6 +27,12 @@ build: tailwind-install templ-install
 	@./tailwindcss -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css
 	@go build -o main cmd/api/main.go
 
+build-debug: tailwind-install templ-install
+	@echo "Building..."
+	@templ generate
+	@./tailwindcss -i cmd/web/styles/input.css -o cmd/web/assets/css/output.css
+	@go build -gcflags='all=-N -l' -o main ./cmd/api/main.go
+
 # Run the application
 run:
 	@go run cmd/api/main.go
@@ -77,6 +83,13 @@ watch:
                 echo "You chose not to install air. Exiting..."; \
                 exit 1; \
             fi; \
+        fi
+
+watch-debug: tailwind-install templ-install
+	@if command -v air > /dev/null; then \
+            air --build.cmd "make build-debug" --build.full_bin "dlv exec ./main --headless --listen=:2345 --api-version=2 --accept-multiclient --continue"; \
+        else \
+            echo "Air is not installed. please run 'make watch' first to install it."; \
         fi
 
 .PHONY: all build run test clean watch tailwind-install docker-run docker-down itest templ-install

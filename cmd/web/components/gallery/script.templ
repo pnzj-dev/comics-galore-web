@@ -1,0 +1,96 @@
+package gallery
+
+var galleryHandle = templ.NewOnceHandle()
+
+templ Script() {
+@galleryHandle.Once() {
+<script defer>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('galleryData', (baseURL, variants, images) => ({
+            currentPage: 1,
+            itemsPerPage: 50,
+            imageGallery: images,
+            imageGalleryOpened: false,
+            imageGalleryActiveUrl: null,
+            imageGalleryImageIndex: null,
+            variants: variants,
+            baseURL: baseURL,
+
+            init() {
+                // 1. Define the handler function
+                const keyHandler = (e) => {
+                    if (!this.imageGalleryOpened) return;
+                    if (e.key === 'ArrowRight') this.imageGalleryNext();
+                    if (e.key === 'ArrowLeft') this.imageGalleryPrev();
+                    if (e.key === 'Escape') this.imageGalleryClose();
+                };
+
+                // 2. Attach the listener
+                window.addEventListener('keydown', keyHandler);
+
+                // 3. CLEANUP: This runs automatically when the component is destroyed
+                this.$cleanup(() => {
+                    window.removeEventListener('keydown', keyHandler);
+                });
+            },
+
+            get paginatedImages() {
+                const start = (this.currentPage - 1) * this.itemsPerPage;
+                return this.imageGallery.slice(start, start + this.itemsPerPage);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.imageGallery.length / this.itemsPerPage);
+            },
+
+            updateItemsPerPage(val) {
+                // Clear any pending update
+                if (this.debounceTimer) clearTimeout(this.debounceTimer);
+
+                // Set a 200ms delay before re-rendering the grid
+                this.debounceTimer = setTimeout(() => {
+                    this.itemsPerPage = parseInt(val);
+                    this.currentPage = 1; // Reset to start
+                }, 200);
+            },
+            selectImage(index) {
+                if (index < 1) index = this.imageGallery.length;
+                if (index > this.imageGallery.length) index = 1;
+
+                this.imageGalleryImageIndex = index;
+                this.imageGalleryActiveUrl = this.getUrl("view", this.imageGallery[index - 1].cloudflare_id);
+
+                this.currentPage = Math.ceil(index / this.itemsPerPage);
+
+                this.preload(index - 1);
+                this.preload(index + 1);
+            },
+            preload(index) {
+                const imgObj = this.imageGallery[index - 1];
+                if (imgObj) {
+                    new Image().src = this.getUrl("view", imgObj.cloudflare_id);
+                }
+            },
+            imageGalleryOpen(index) {
+                this.selectImage(index); // Use the helper!
+                this.imageGalleryOpened = true;
+            },
+            imageGalleryNext() {
+                this.selectImage(parseInt(this.imageGalleryImageIndex) + 1);
+            },
+            imageGalleryPrev() {
+                this.selectImage(parseInt(this.imageGalleryImageIndex) - 1);
+            },
+            imageGalleryClose() {
+                this.imageGalleryOpened = false;
+            },
+            getUrl(type, id) {
+                if (!id) return "";
+                const variant = this.variants[type] || "cover";
+                return new URL(`${id}/${variant}`, this.baseURL).toString();
+            },
+        }))
+    })
+</script>
+}
+}

@@ -51,7 +51,9 @@ type Querier interface {
 	// Using UUID v7 for the ID (handled by DEFAULT in schema)
 	InsertMessage(ctx context.Context, arg InsertMessageParams) (Message, error)
 	ListArchivesByPostID(ctx context.Context, postID uuid.UUID) ([]ListArchivesByPostIDRow, error)
+	ListCategoriesLimit(ctx context.Context) ([]Category, error)
 	ListPosts(ctx context.Context, arg ListPostsParams) ([]ListPostsRow, error)
+	ListPostsByCategory(ctx context.Context, arg ListPostsByCategoryParams) ([]ListPostsByCategoryRow, error)
 	ListRelatedPosts(ctx context.Context, arg ListRelatedPostsParams) ([]ListRelatedPostsRow, error)
 	// Fetches chat list for a user with unread counts and the last message content.
 	ListUserConversations(ctx context.Context, userID string) ([]ListUserConversationsRow, error)

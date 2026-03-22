@@ -33,30 +33,35 @@ const countPosts = `-- name: CountPosts :one
 SELECT count(*)
 FROM blogposts b
          JOIN categories c ON b.category_id = c.id
-WHERE ($1::text = '' OR (
-    ($2::bool AND b.title ILIKE '%' || $1::text || '%') OR
-    ($3::bool AND b.author_name ILIKE '%' || $1::text || '%') OR
-    ($4::bool AND b.description ILIKE '%' || $1::text || '%') OR
-    ($5::bool AND c.name ILIKE '%' || $1::text || '%')
+WHERE
+  -- Strict UUID Filter (if provided)
+    ($1::uuid IS NULL OR b.category_id = $1)
+  AND ($2::text = '' OR (
+    ($3::bool AND b.title ILIKE '%' || $2::text || '%') OR
+    ($4::bool AND b.author_name ILIKE '%' || $2::text || '%') OR
+    ($5::bool AND b.description ILIKE '%' || $2::text || '%') OR
+    ($6::bool AND c.name ILIKE '%' || $2::text || '%')
     ))
-  AND (cardinality($6::text[]) = 0 OR
-       ($7::bool AND b.tags @> $6::text[]) OR
-       (NOT $7::bool AND b.tags && $6::text[])
+  AND (cardinality($7::text[]) = 0 OR
+       ($8::bool AND b.tags @> $7::text[]) OR
+       (NOT $8::bool AND b.tags && $7::text[])
     )
 `
 
 type CountPostsParams struct {
-	SearchQuery       string   `json:"search_query"`
-	SearchTitle       bool     `json:"search_title"`
-	SearchAuthor      bool     `json:"search_author"`
-	SearchDescription bool     `json:"search_description"`
-	SearchCategory    bool     `json:"search_category"`
-	Tags              []string `json:"tags"`
-	MatchAll          bool     `json:"match_all"`
+	CategoryID        uuid.NullUUID `json:"category_id"`
+	SearchQuery       string        `json:"search_query"`
+	SearchTitle       bool          `json:"search_title"`
+	SearchAuthor      bool          `json:"search_author"`
+	SearchDescription bool          `json:"search_description"`
+	SearchCategory    bool          `json:"search_category"`
+	Tags              []string      `json:"tags"`
+	MatchAll          bool          `json:"match_all"`
 }
 
 func (q *Queries) CountPosts(ctx context.Context, arg CountPostsParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countPosts,
+		arg.CategoryID,
 		arg.SearchQuery,
 		arg.SearchTitle,
 		arg.SearchAuthor,
@@ -627,6 +632,41 @@ func (q *Queries) ListArchivesByPostID(ctx context.Context, postID uuid.UUID) ([
 	return items, nil
 }
 
+const listCategoriesLimit = `-- name: ListCategoriesLimit :many
+SELECT id,
+       slug,
+       display_name,
+       created_at
+FROM categories
+ORDER BY created_at ASC
+LIMIT 5
+`
+
+func (q *Queries) ListCategoriesLimit(ctx context.Context) ([]Category, error) {
+	rows, err := q.db.Query(ctx, listCategoriesLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Category{}
+	for rows.Next() {
+		var i Category
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.DisplayName,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPosts = `-- name: ListPosts :many
 SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
 FROM blogposts b
@@ -656,6 +696,74 @@ func (q *Queries) ListPosts(ctx context.Context, arg ListPostsParams) ([]ListPos
 	items := []ListPostsRow{}
 	for rows.Next() {
 		var i ListPostsRow
+		if err := rows.Scan(
+			&i.Blogpost.ID,
+			&i.Blogpost.Title,
+			&i.Blogpost.AuthorName,
+			&i.Blogpost.UploaderID,
+			&i.Blogpost.CategoryID,
+			&i.Blogpost.Description,
+			&i.Blogpost.Tags,
+			&i.Blogpost.Cover,
+			&i.Blogpost.Previews,
+			&i.Blogpost.Rating,
+			&i.Blogpost.LanguageCode,
+			&i.Blogpost.Pages,
+			&i.Blogpost.SizeBytes,
+			&i.Blogpost.MimeTypes,
+			&i.Blogpost.CreatedAt,
+			&i.Blogpost.UpdatedAt,
+			&i.Category.ID,
+			&i.Category.Slug,
+			&i.Category.DisplayName,
+			&i.Category.CreatedAt,
+			&i.BlogpostStat.PostID,
+			&i.BlogpostStat.Comments,
+			&i.BlogpostStat.Downloads,
+			&i.BlogpostStat.AuthViews,
+			&i.BlogpostStat.AnonViews,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPostsByCategory = `-- name: ListPostsByCategory :many
+SELECT b.id, b.title, b.author_name, b.uploader_id, b.category_id, b.description, b.tags, b.cover, b.previews, b.rating, b.language_code, b.pages, b.size_bytes, b.mime_types, b.created_at, b.updated_at, c.id, c.slug, c.display_name, c.created_at, s.post_id, s.comments, s.downloads, s.auth_views, s.anon_views
+FROM blogposts b
+         JOIN categories c ON b.category_id = c.id
+         LEFT JOIN blogpost_stats s ON b.id = s.post_id
+WHERE b.category_id = $1
+ORDER BY b.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListPostsByCategoryParams struct {
+	CategoryID uuid.UUID `json:"category_id"`
+	Limit      int32     `json:"limit"`
+	Offset     int32     `json:"offset"`
+}
+
+type ListPostsByCategoryRow struct {
+	Blogpost     Blogpost     `json:"blogpost"`
+	Category     Category     `json:"category"`
+	BlogpostStat BlogpostStat `json:"blogpost_stat"`
+}
+
+func (q *Queries) ListPostsByCategory(ctx context.Context, arg ListPostsByCategoryParams) ([]ListPostsByCategoryRow, error) {
+	rows, err := q.db.Query(ctx, listPostsByCategory, arg.CategoryID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListPostsByCategoryRow{}
+	for rows.Next() {
+		var i ListPostsByCategoryRow
 		if err := rows.Scan(
 			&i.Blogpost.ID,
 			&i.Blogpost.Title,

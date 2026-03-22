@@ -16,6 +16,7 @@ type Service interface {
 	Get(ctx context.Context, id uuid.UUID) (*Post, error)
 	List(ctx context.Context, limit, offset int32) ([]Post, int64, error)
 	GetArchives(ctx context.Context, id uuid.UUID) ([]Archive, error)
+	ListByCategory(ctx context.Context, limit, offset int32, categoryUUID string) ([]Post, int64, error)
 
 	//IncrementView Increment view count of a post
 	IncrementView(ctx context.Context, params database.IncrementPostStatsParams) error
@@ -24,11 +25,45 @@ type Service interface {
 	ListRelated(ctx context.Context, params database.ListRelatedPostsParams) ([]Post, error)
 
 	Search(ctx context.Context, params database.SearchPostsParams) ([]Post, int64, error)
+
+	ListCategories(ctx context.Context) ([]database.Category, error)
 }
 
 type service struct {
 	queries *database.Queries
 	logger  *slog.Logger
+}
+
+func (s *service) ListCategories(ctx context.Context) ([]database.Category, error) {
+	categories, err := s.queries.ListCategoriesLimit(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return categories, nil
+}
+
+func (s *service) ListByCategory(ctx context.Context, limit, offset int32, category string) ([]Post, int64, error) {
+	l := s.logger.With("op", "ListByCategory", "limit", limit, "offset", offset, "category", category)
+
+	categoryUUID, err := uuid.Parse(category)
+
+	if err != nil {
+		return nil, 0, err
+	}
+	rows, err := s.queries.ListPostsByCategory(ctx, database.ListPostsByCategoryParams{CategoryID: categoryUUID, Limit: limit, Offset: offset})
+	if err != nil {
+		l.Error("failed to list posts by category", "error", err)
+		return nil, 0, err
+	}
+
+	count, _ := s.queries.CountPosts(ctx, database.CountPostsParams{CategoryID: uuid.NullUUID{UUID: categoryUUID, Valid: true}})
+	l.Info("posts by category retrieved", "count", len(rows), "total", count)
+
+	items := make([]Post, len(rows))
+	for i, row := range rows {
+		items[i] = *s.mapRowToPost(row.Blogpost, &row.BlogpostStat, &row.Category)
+	}
+	return items, count, nil
 }
 
 func (s *service) GetArchives(ctx context.Context, id uuid.UUID) ([]Archive, error) {
