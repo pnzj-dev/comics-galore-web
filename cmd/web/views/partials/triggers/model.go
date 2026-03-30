@@ -1,5 +1,7 @@
 package triggers
 
+import "github.com/a-h/templ"
+
 type Props struct {
 	Url             string
 	Size            string
@@ -10,6 +12,26 @@ type Props struct {
 	CustomSkeleton  string
 	ConfirmClose    bool
 	CloseOnBackdrop bool
+}
+
+func getDropdownItemClasses(isDanger bool) templ.CSSClasses {
+	return templ.Classes("flex w-full items-center px-4 py-2 text-sm transition-colors duration-150",
+		templ.KV("text-gray-700 hover:bg-indigo-50 hover:text-indigo-700", !isDanger),
+		templ.KV("font-medium text-red-600 hover:bg-red-50 hover:text-red-700 group", isDanger),
+	)
+}
+
+func NewDropdownItemProps(url, title, label string, isDanger bool) Props {
+	return Props{
+		Url:             url,
+		Size:            "auto",
+		Title:           title,
+		Label:           label,
+		ExtraClick:      "mobileOpen = false;avatarOpen = false",
+		Classes:         getDropdownItemClasses(isDanger).String(),
+		ConfirmClose:    false,
+		CloseOnBackdrop: false,
+	}
 }
 
 func NewLoginProps() Props {

@@ -117,8 +117,17 @@ templ StoreScript() {
 
                 // Function to check if data actually changed
                 isActuallyDirty: () => {
+                    // 1. Quick exit if confirmation is disabled
                     if (!$store.ui.modal.confirmClose) return false;
-                    const currentData = JSON.stringify(Object.fromEntries(new FormData(document.querySelector('#modal-content form'))));
+
+                    // 2. Safely find the form
+                    const form = document.querySelector('#modal-content form');
+
+                    // 3. If there is no form (e.g., a simple message modal), it can't be dirty
+                    if (!form) return false;
+
+                    // 4. Compare current state to initial snapshot
+                    const currentData = JSON.stringify(Object.fromEntries(new FormData(form)));
                     return currentData !== $store.ui.modal.initialData;
                 }
             }

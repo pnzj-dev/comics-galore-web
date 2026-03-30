@@ -10,7 +10,7 @@ type SignupInput struct {
 	Name            string `json:"name" form:"name" validate:"omitempty,max=100"`
 	Email           string `json:"email" form:"email" validate:"required,email"`
 	Password        string `json:"password" form:"password" validate:"required,min=10"`
-	ConfirmPassword string `json:"confirm_password" form:"confirm_password" validate:"required,eqfield=Password"`
+	ConfirmPassword string `json:"passwordConfirm" form:"passwordConfirm" validate:"required,eqfield=Password"`
 }
 
 type ForgotInput struct {

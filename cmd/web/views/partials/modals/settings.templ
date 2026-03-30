@@ -1,12 +1,12 @@
 package modals
 
-import "comics-galore-web/cmd/web/views/helper"
 import "fmt"
+import "comics-galore-web/cmd/web/handlers/view"
 
-templ ModalSettings() {
-{{ appContext := helper.GetAppContext(ctx)}}
+templ Settings() {
+{{appContext := view.GetAppContext2(ctx)}}
 <div x-data="modalSettings()"
-     class="w-full max-h-[80vh] overflow-y-auto px-1 custom-scrollbar">
+     class="w-full min-h-[30rem] min-w-[45rem] overflow-y-auto px-6 py-4 custom-scrollbar">
 
     <div class="mb-8">
         <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Account Settings</h2>
@@ -15,17 +15,19 @@ templ ModalSettings() {
 
     <div class="sticky top-0 z-20 mb-4 space-y-2">
         <template x-if="saveError">
-            <div class="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" x-text="saveError"></div>
+            <div class="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+                 x-text="saveError"></div>
         </template>
         <template x-if="saveSuccess">
-            <div class="p-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">Changes saved successfully.</div>
+            <div class="p-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                Changes saved successfully.
+            </div>
         </template>
     </div>
 
     <div class="space-y-10 pb-10">
         <section class="space-y-4">
             <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Appearance</h3>
-
             <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700">
                 <div>
                     <span class="block text-sm font-bold text-gray-900 dark:text-white">Dark Mode</span>
@@ -38,10 +40,10 @@ templ ModalSettings() {
                           class="inline-block h-5 w-5 transform rounded-full bg-white transition duration-200 shadow-sm mt-0.5 ml-0.5"></span>
                 </button>
             </div>
-
             <div class="space-y-2">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Interface Language</label>
-                <select x-model="language" class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm">
+                <select x-model="language"
+                        class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm">
                     <option value="en">English (US)</option>
                     <option value="fr">Français</option>
                     <option value="es">Español</option>
@@ -49,28 +51,37 @@ templ ModalSettings() {
             </div>
         </section>
 
-        <hr class="border-gray-200 dark:border-gray-800" />
-
+        <hr class="border-gray-200 dark:border-gray-800"/>
         <section class="space-y-4">
             <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Security</h3>
             <form @submit.prevent="changePassword($el)" class="space-y-3">
+                <input type="text"
+                       name="username"
+                       value={view.GetAppContext2(ctx).UserInfo.Name }
+                       autocomplete="username"
+                       class="hidden"
+                       readonly/>
                 <div>
                     <label class="block text-xs font-medium text-gray-500 mb-1">Current Password</label>
-                    <input type="password" x-model="passwords.current" class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
+                    <input type="password" autocomplete="current-password" x-model="passwords.current"
+                           class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">New Password</label>
-                        <input type="password" x-model="passwords.new" class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
+                        <input type="password" x-model="passwords.new" autocomplete="new-password"
+                               class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">Confirm New</label>
-                        <input type="password" x-model="passwords.confirm" class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
+                        <input type="password" x-model="passwords.confirm" autocomplete="new-password"
+                               class="block w-full rounded-lg border-gray-300 dark:bg-gray-800 dark:border-gray-700 dark:text-white text-sm"/>
                     </div>
                 </div>
 
                 <div class="pt-2">
-                    <div class="cf-turnstile" :data-sitekey="turnstileKey" data-callback="onPasswordTurnstileSuccess"></div>
+                    <div class="cf-turnstile" :data-sitekey="turnstileKey"
+                         data-callback="onPasswordTurnstileSuccess"></div>
                 </div>
 
                 <button type="submit"
@@ -81,21 +92,26 @@ templ ModalSettings() {
             </form>
         </section>
 
-        <hr class="border-gray-200 dark:border-gray-800" />
+        <hr class="border-gray-200 dark:border-gray-800"/>
 
         <section class="space-y-4">
             <h3 class="text-sm font-semibold uppercase tracking-wider text-gray-400">Notifications</h3>
             <div class="space-y-3">
                 <label class="flex items-center space-x-3 cursor-pointer">
-                    <input type="checkbox" x-model="notifications.marketing" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800"/>
+                    <input type="checkbox" x-model="notifications.marketing"
+                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800"/>
                     <span class="text-sm text-gray-700 dark:text-gray-300">Receive marketing and newsletter emails</span>
                 </label>
                 <label class="flex items-center space-x-3 cursor-pointer">
-                    <input type="checkbox" x-model="notifications.security" class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800"/>
+                    <input type="checkbox" x-model="notifications.security"
+                           class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-800"/>
                     <span class="text-sm text-gray-700 dark:text-gray-300">Email me about security alerts (Recommended)</span>
                 </label>
             </div>
-            <button @click="savePreferences" class="text-xs font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Save notification preferences</button>
+            <button @click="savePreferences"
+                    class="text-xs font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Save
+                notification preferences
+            </button>
         </section>
     </div>
 </div>
@@ -111,13 +127,13 @@ templ ModalSettings() {
         return {
             // Data State
             turnstileKey: {{ appContext.TurnstileSiteKey }},
-            nightModeEnabled: {{ fmt.Sprintf("%t", appContext.Claims.NightMode) }},
-            language: 'en', // Default, update if Claims has a Language field
+            nightModeEnabled: {{ fmt.Sprintf("%t", appContext.UserInfo.NightMode) }},
+            language: 'en', // Default, update if UserInfo has a Language field
             notifications: {
                 marketing: false, // Update with real data if available
                 security: true
             },
-            passwords: { current: '', new: '', confirm: '' },
+            passwords: {current: '', new: '', confirm: ''},
 
             // UI State
             passwordTurnstileToken: null,
@@ -134,8 +150,8 @@ templ ModalSettings() {
 
                 fetch('/api/v1/settings/night-mode', {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nightMode: this.nightModeEnabled })
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({nightMode: this.nightModeEnabled})
                 }).catch(err => {
                     this.nightModeEnabled = previous; // Rollback
                     document.documentElement.classList.toggle('dark', previous);
@@ -159,7 +175,7 @@ templ ModalSettings() {
 
                 if (success) {
                     this.setSuccessMessage('Password changed successfully.');
-                    this.passwords = { current: '', new: '', confirm: '' };
+                    this.passwords = {current: '', new: '', confirm: ''};
                     if (window.turnstile) window.turnstile.reset(form.querySelector('.cf-turnstile'));
                     this.passwordTurnstileToken = null;
                 }

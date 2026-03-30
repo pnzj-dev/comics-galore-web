@@ -2,7 +2,7 @@
 
 body {
     font-family: 'Inter', sans-serif;
-    background-color: #f7fafc;  /*Light gray background*/
+    background-color: #f7fafc; /*Light gray background*/
 }
 
 [x-cloak] {
@@ -34,11 +34,40 @@ body {
 }
 
 @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
 }
+
 .skeleton {
     background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s infinite linear;
+}
+
+/* Add this to your main CSS */
+.modal-animate-height {
+    transition: min-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), height 0.5s aria-busy;
+}
+
+
+@layer components {
+    .dropdown-item {
+        @apply flex w-full items-center px-4 py-2 text-sm text-gray-700
+        transition-all duration-200 cursor-pointer border-none bg-transparent rounded-md !important;
+
+        /* The Hover State */
+        @apply hover:bg-indigo-50 hover:text-indigo-700 !important;
+
+        /* The Active/Focus State (for keyboard users) */
+        @apply focus:bg-indigo-100 focus:text-indigo-900 focus:outline-none !important;
+    }
+
+    .dropdown-item-danger {
+        @apply dropdown-item text-red-600 !important;
+        @apply hover:bg-red-50 hover:text-red-700 !important;
+    }
 }

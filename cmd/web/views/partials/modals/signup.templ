@@ -2,91 +2,92 @@ package modals
 
 import "comics-galore-web/cmd/web/components/form"
 import "comics-galore-web/cmd/web/components/dialog"
+import "comics-galore-web/cmd/web/views/helper"
 
-templ Signup(turnstileSiteKey string, errors map[string]string) {
-<div style="width: 35em;height: 70vh;">
-    @dialog.Header(dialog.HeaderProps{Title: "Sign un", ShowClose: false, Icon: true})
-    <form id="signup-form" x-data={signupXData(turnstileSiteKey,false)} x-on:submit.prevent="submitForm($el)"
-          class="space-y-6">
-        @form.Input(form.InputFieldProps{
-        Name: "name",
-        Label: "Name",
-        Type: "text",
-        Required: true,
-        ModelPath: "name",
-        ErrorPath: "formErrors.name",
-        Error: errors["name"],
-        })
-        @form.Input(form.InputFieldProps{
-        Name: "email",
-        Label: "Email",
-        Type: "email",
-        Required: true,
-        ModelPath: "email",
-        ErrorPath: "formErrors.email",
-        Error: errors["email"],
-        })
-        @form.Input(form.InputFieldProps{
-        Name: "password",
-        Label: "Password",
-        Type: "password",
-        Required: true,
-        ModelPath: "password",
-        ErrorPath: "formErrors.password",
-        Error: errors["password"],
-        })
-        @form.Input(form.InputFieldProps{
-        Name: "passwordConfirm",
-        Label: "Confirm Password",
-        Type: "password",
-        Required: true,
-        ModelPath: "passwordConfirm",
-        ErrorPath: "formErrors.passwordConfirm",
-        Error: errors["passwordConfirm"],
-        })
+templ Signup(errors map[string]string) {
+if errors == nil {
+errors = make(map[string]string)
+}
+<div class="flex flex-col modal-animate-height animate-in fade-in duration-300" style="width: 35em; min-height: 70vh;">
+    @dialog.Header(dialog.HeaderProps{Title: "Sign Up", ShowClose: false, Icon: true})
+    @templ.Fragment("sign-up") {
+    <form id="signup-form"
+          x-data={signupXData(helper.GetAppContext(ctx).TurnstileSiteKey,false)}
+          x-on:submit.prevent="submitForm($el)"
+          class="flex-1 flex flex-col px-6 py-4">
 
-        <!-- Invisible Turnstile -->
+        <div id="form-error">
+            if errors["general"] != "" {
+            <div class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm animate-in slide-in-from-top-1">
+                { errors["general"] }
+            </div>
+            }
+        </div>
+
+        <div x-show="formErrors.global"
+             x-cloak
+             class="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            <span x-text="formErrors.global"></span>
+        </div>
+
+        <div class="space-y-5">
+            @form.Input(form.InputFieldProps{
+            Name: "name", Label: "Name", Type: "text", Required: true,
+            ModelPath: "name", ErrorPath: "formErrors.name", Error: errors["name"],
+            ExtraAttrs: templ.Attributes{"autocomplete": "off"},
+            })
+            @form.Input(form.InputFieldProps{
+            Name: "email", Label: "Email", Type: "email", Required: true,
+            ModelPath: "email", ErrorPath: "formErrors.email", Error: errors["email"],
+            ExtraAttrs: templ.Attributes{"autocomplete": "username"},
+            })
+            @form.Input(form.InputFieldProps{
+            Name: "password", Label: "Password", Type: "password", Required: true,
+            ModelPath: "password", ErrorPath: "formErrors.password", Error: errors["password"],
+            ExtraAttrs: templ.Attributes{"autocomplete": "new-password"},
+            })
+            @form.Input(form.InputFieldProps{
+            Name: "passwordConfirm", Label: "Confirm Password", Type: "password", Required: true,
+            ModelPath: "passwordConfirm", ErrorPath: "formErrors.passwordConfirm", Error: errors["passwordConfirm"],
+            ExtraAttrs: templ.Attributes{"autocomplete": "new-password"},
+            })
+        </div>
+
+        <div class="flex-1"></div>
+
         <div id="turnstile-signup" class="hidden"></div>
 
-        <div id="signup-form-submit"
+        <div id="signup-form-trigger"
              hx-post="/api/v1/auth/sign-up/email"
              hx-target="#signup-form"
              hx-swap="outerHTML"
              hx-indicator="#signup-loading"
              hx-vals='js:{ "cf-turnstile-response": Alpine.$data(document.getElementById("signup-form")).turnstileToken }'
-             hx-trigger="submit">
+             hx-trigger="submit-signup">
         </div>
 
-        <div class="flex justify-end gap-4 items-center pt-2">
-            <div id="signup-loading"
-                 class="htmx-indicator inline-block animate-spin h-5 w-5 border-2 border-indigo-600 border-t-transparent rounded-full">
+        <div class="pt-6 border-t border-gray-100">
+            <div class="flex flex-col gap-4">
+                <div class="flex justify-end gap-4 items-center">
+                    <div id="signup-loading"
+                         class="htmx-indicator inline-block animate-spin h-5 w-5 border-2 border-indigo-600 border-t-transparent rounded-full">
+                    </div>
+                    @form.Button(form.ButtonProps{Label: "Create Account", Variant: "primary", FullWidth: true })
+                </div>
+
+                <div class="text-center text-sm text-gray-600">
+                    Already have an account?
+                    <button type="button"
+                            class="text-indigo-600 hover:underline font-medium"
+                            hx-get="/auth/modal/login"
+                            hx-target="#modal-content"
+                            hx-swap="innerHTML">
+                        Sign in
+                    </button>
+                </div>
             </div>
-            @form.Button(form.ButtonProps{Label: "Create Account", Variant: "primary", FullWidth: true })
-        </div>
-
-        <!-- Client-side global error -->
-        <div x-show="formErrors.global" class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-3">
-            <span x-text="formErrors.global"></span>
-        </div>
-
-        <!-- Server-side global error -->
-        if errors["global"] != "" {
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mt-3">
-            <p>{ errors["global"] }</p>
-        </div>
-        }
-
-        <div class="text-center text-sm text-gray-600 mt-4">
-            Already have an account?
-            <button type="button"
-                    class="text-indigo-600 hover:underline"
-                    hx-get="/auth/modal/login"
-                    hx-target="#modal-content"
-                    hx-swap="innerHTML"
-                    @click="$store.ui.modal.open = true">
-                Sign in
-            </button>
         </div>
     </form>
+    }
 </div>
 }

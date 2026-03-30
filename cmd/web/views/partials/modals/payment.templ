@@ -4,7 +4,9 @@ import "fmt"
 import "comics-galore-web/cmd/web/views/helper"
 
 templ Payment() {
-{{uid:=helper.RandomID()}}
+{{
+uid := helper.GetAppContext(ctx).UserInfo.ID
+}}
 <div x-data="multiStepForm()" id={fmt.Sprintf("wizard-%s",uid)}
      class="w-full max-w-2xl bg-white shadow-2xl rounded-xl p-8 transition-all duration-300">
     <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">Project Setup Wizard</h1>

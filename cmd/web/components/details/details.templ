@@ -2,11 +2,11 @@ package details
 
 import "fmt"
 import "comics-galore-web/internal/blog"
-import "comics-galore-web/internal/auth"
 import "comics-galore-web/cmd/web/components/comment"
+import "comics-galore-web/cmd/web/handlers/view"
 
 
-templ Details(post *blog.Post, relatedPosts []blog.Post, user *auth.Claims, variants map[string]string) {
+templ Details(post *blog.Post, relatedPosts []blog.Post, user *view.ComicsGaloreClaims, variants map[string]string) {
 @script()
 {{
 variantsJSON,_ := templ.JSONString(variants)

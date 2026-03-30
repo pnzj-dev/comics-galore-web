@@ -25,9 +25,19 @@ func getBeforeRequest(props Props) string {
 
 func getAfterRequest() string {
 	return fmt.Sprintf(`
-		let modal = Alpine.store('ui').modal;
-    	modal.loading = false;
-    	modal.initialData = JSON.stringify(Object.fromEntries(new FormData(document.querySelector('#modal-content form'))));`)
+        let modal = Alpine.store('ui').modal;
+        modal.loading = false;
+        
+        // 1. Find the form element first
+        const modalForm = document.querySelector('#modal-content form');
+        
+        // 2. Only snapshot if the form actually exists
+        if (modalForm) {
+            modal.initialData = JSON.stringify(Object.fromEntries(new FormData(modalForm)));
+        } else {
+            modal.initialData = null; // Clear it for non-form modals
+        }
+    `)
 }
 
 func getError(errorState string) string {
@@ -42,4 +52,12 @@ func getModalAttributes(props Props, errorState string) templ.Attributes {
 		"hx-on::after-request":  getAfterRequest(),
 		"hx-on::error":          getError(errorState),
 	}
+}
+
+func getClickAttributes(extraClicks string) templ.Attributes {
+	attr := templ.Attributes{}
+	if extraClicks != "" {
+		attr["@click"] = extraClicks
+	}
+	return attr
 }

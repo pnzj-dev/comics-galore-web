@@ -13,6 +13,7 @@ type Env struct {
 	DatabaseDSN       string `env:"DATABASE_DSN"`
 	MaxCommentNesting int    `env:"MAX_COMMENT_NESTING" envDefault:"5"`
 	BetterAuth        string `env:"BETTER_AUTH" envDefault:"https://auth.comics-galore.com/api/auth/"`
+	JwtSecret         string `env:"JWT_SECRET" envDefault:"7f8d6263836b47c6981882d2d38510842e2b3e45f9e9a4d293816b3281907421"`
 	BetterAuthSecret  string `env:"BETTER_AUTH_SECRET"`
 	JwksUrl           string `env:"JWKS_URL"`
 	JwksFunc          keyfunc.Keyfunc

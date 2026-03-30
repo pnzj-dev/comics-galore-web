@@ -39,8 +39,12 @@ return `
 templ OpenModal(props Props) {
 <button type="button"
         hx-get={props.Url}
-        hx-target="#modal-content"
         hx-swap="innerHTML"
+        hx-target="#modal-content"
+        hx-ext="json-enc"
+        hx-headers='{"Content-Type": "application/json"}'
+        hx-vals='{}'
+        {getClickAttributes(props.ExtraClick)...}
         {getModalAttributes(props,getErrorState())...}
         class={props.Classes}>
     { props.Label }

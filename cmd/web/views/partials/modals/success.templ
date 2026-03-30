@@ -1,51 +1,57 @@
 package modals
 
 import "comics-galore-web/cmd/web/components/dialog"
+import "comics-galore-web/cmd/web/components/icons"
 
 type successDetails struct {
-	title   string
-	message string
+title   string
+message string
 }
 
 var successMap = map[string]successDetails{
-	"reset-password": {title: "Check Your Email", message: "We've sent a recovery link to your inbox. Please check your spam folder if it doesn't appear in a few minutes."},
-	"sign-up":        {title: "Welcome Aboard!", message: "Your account is ready. We're getting your workspace ready now..."},
-	"sign-in":        {title: "Welcome Back", message: "Success! Preparing to redirect you to your dashboard..."},
+"reset-password": {title: "Check Your Email", message: "We've sent a recovery link to your inbox. Please check your spam folder if it doesn't appear in a few minutes."},
+"sign-up":        {title: "Welcome Aboard!", message: "Your account is ready. Taking you to the home page to start exploring!"},
+"sign-in":        {title: "Welcome Back!", message: "Success! Heading back to the home page now."},
+"sign-out":       {title: "See You Soon!", message: "You have been safely signed out. Returning you to the home page."},
 }
 
 templ Success(formType string) {
-	{{
-		// Fallback for unknown form types
-		details, ok := successMap[formType]
-		if !ok {
-			details = successDetails{title: "Success!", message: "Your request was processed successfully."}
-		}
-		showMailIcon := formType == "reset-password" || formType == "forgot"
-	}}
-	<div class="w-[35em] min-h-[40vh] flex flex-col animate-in fade-in zoom-in duration-300">
-		@dialog.Header(dialog.HeaderProps{Icon: false, Title: details.title, ShowClose: true})
-		<div class="px-6 py-10 flex-1 flex flex-col items-center justify-center text-center">
-			<div class={ templ.Classes("mb-6", "rounded-full", "p-3", templ.KV("bg-indigo-100 text-indigo-600", showMailIcon), templ.KV("bg-green-100 text-green-600", !showMailIcon)) }>
-				if showMailIcon {
-					<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-					</svg>
-				} else {
-					<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-					</svg>
-				}
-			</div>
-			<h3 class="text-xl font-bold text-gray-900 mb-2">{ details.title }</h3>
-			<p class="text-gray-600 leading-relaxed max-w-sm text-center">{ details.message }</p>
-		</div>
-		@dialog.Footer() {
-			<div class="flex justify-center w-full pb-4">
-				<button type="button" @click="$store.ui.modal.open = false"
-					class="px-8 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium">
-					Close
-				</button>
-			</div>
-		}
-	</div>
+{{
+details, ok := successMap[formType]
+if !ok {
+details = successDetails{title: "Success!", message: "Your request was processed successfully."}
+}
+showMailIcon := formType == "reset-password" || formType == "forgot"
+}}
+<div class="w-[35em] min-h-[40vh] flex flex-col animate-in fade-in zoom-in duration-300">
+
+    <div class="px-6 py-10 flex-1 flex flex-col items-center justify-center text-center">
+        <div class={ templ.Classes(
+        "mb-6", "rounded-full", "p-4", templ.KV("bg-indigo-100", showMailIcon), templ.KV("bg-green-100", !showMailIcon))
+        }>
+        if showMailIcon {
+        @icons.Envelope(icons.IconProps{
+        Size: "w-12 h-12",
+        Class: "text-indigo-600",
+        })
+        } else {
+        @icons.Checkmark(icons.IconProps{
+        Size: "w-12 h-12",
+        Class: "text-green-600",
+        })
+        }
+    </div>
+    <h3 class="text-xl font-bold text-gray-900 mb-2">{ details.title }</h3>
+    <p class="text-gray-600 leading-relaxed max-w-sm">{ details.message }</p>
+</div>
+
+@dialog.Footer() {
+<div class="w-full pb-6 px-6">
+    <button type="button" @click="$store.ui.modal.open = false; window.location.reload()"
+            class="w-full py-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-all font-medium active:scale-[0.98]">
+        Close
+    </button>
+</div>
+}
+</div>
 }

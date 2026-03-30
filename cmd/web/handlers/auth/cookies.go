@@ -12,39 +12,49 @@ import (
 	"io"
 )
 
-func (h *handler) syncCookies(c fiber.Ctx) error {
-	// 1. Extract the JWT from the Proxy Response Headers directly
-	// Peek returns []byte, which is memory-efficient
-	jwtBytes := c.Response().Header.Peek("Set-Auth-Jwt")
+func (h *handler) getCookieName() string {
+	if h.cfg.Get().AppEnv == "production" {
+		return "__Secure-cg-auth"
+	}
+	return "cg-auth-dev"
+}
 
-	if len(jwtBytes) == 0 {
+func (h *handler) createCookie(c fiber.Ctx) error {
+	if err := c.Next(); err != nil {
+		return err
+	}
+
+	// 1. Get the raw data from the proxy response body
+	userSession, err := h.getUserSession(c)
+	if err != nil {
 		return nil
 	}
 
-	jwt := string(jwtBytes)
-
-	// 2. Decode the body to get session details
-	session, err := h.extractSessionData(c)
+	// 2. Transform the struct into a signed JWT string
+	signedToken, err := h.generateJWT(userSession)
 	if err != nil {
-		return fmt.Errorf("could not extract session for cookie sync: %w", err)
+		log.Errorf("JWT generation failed: %v", err)
+		return nil
 	}
 
-	// 3. Set the cookie on our domain
+	// 3. Clean up headers from the proxy
+	c.Response().Header.Del(fiber.HeaderSetCookie)
+
+	// 4. Set the cookie
 	c.Cookie(&fiber.Cookie{
-		Name:     "comics-galore-jwt",
-		Value:    jwt,
-		Expires:  session.Session.ExpiresAt,
+		Name:     "cg-auth-local", //TODO: __Secure-cg-auth (in production) => use getCookieName()
+		Value:    signedToken,
+		Expires:  userSession.Session.ExpiresAt,
 		HTTPOnly: true,
-		Secure:   true,
+		Secure:   false, //TODO: set to true in production
 		SameSite: "Lax",
-		Path:     "/", // Ensure the cookie is available site-wide
+		Path:     "/",
 	})
 
 	return nil
 }
 
-// Internal helper to handle Gzip/JSON decompression
-func (h *handler) extractSessionData(c fiber.Ctx) (*auth.GetSession, error) {
+func (h *handler) getUserSession(c fiber.Ctx) (*auth.UserSession, error) {
 	bodyBytes := c.Response().Body()
 	if len(bodyBytes) == 0 {
 		return nil, errors.New("empty response body")
@@ -52,11 +62,11 @@ func (h *handler) extractSessionData(c fiber.Ctx) (*auth.GetSession, error) {
 
 	var reader io.Reader = bytes.NewReader(bodyBytes)
 
-	// Handle Gzip if the auth service compressed the response
-	if string(c.Response().Header.Peek("Content-Encoding")) == "gzip" {
+	// Check for Gzip encoding from the proxy response
+	if string(c.Response().Header.Peek(fiber.HeaderContentEncoding)) == "gzip" {
 		gz, err := gzip.NewReader(reader)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("gzip reader failed: %w", err)
 		}
 		defer func(gz *gzip.Reader) {
 			err := gz.Close()
@@ -67,10 +77,13 @@ func (h *handler) extractSessionData(c fiber.Ctx) (*auth.GetSession, error) {
 		reader = gz
 	}
 
-	var sessionData auth.GetSession
-	if err := json.NewDecoder(reader).Decode(&sessionData); err != nil {
-		return nil, err
+	var userSession auth.UserSession
+	if err := json.NewDecoder(reader).Decode(&userSession); err != nil {
+		return nil, fmt.Errorf("json decode failed: %w", err)
 	}
 
-	return &sessionData, nil
+	// Clear the body from the response
+	c.Response().ResetBody()
+
+	return &userSession, nil
 }

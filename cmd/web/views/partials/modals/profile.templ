@@ -1,109 +1,123 @@
 package modals
 
-import "comics-galore-web/cmd/web/views/helper"
+import "comics-galore-web/cmd/web/handlers/view"
+//import "comics-galore-web/cmd/web/views/helper"
 
 templ Profile() {
-{{ appContext := helper.GetAppContext(ctx) }}
-<div x-data="modalProfile()" class="w-full max-h-[80vh] overflow-y-auto custom-scrollbar px-1">
+{{ userInfo := view.GetAppContext2(ctx).UserInfo}}
+<div x-data="modalProfile()" class="overflow-y-auto custom-scrollbar px-6 py-8 bg-white dark:bg-gray-900 rounded-2xl">
+    <div class="flex flex-col items-center text-center mb-10">
+        <div class="relative mb-4">
+            <div class="absolute -inset-1 bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 rounded-full blur-sm opacity-40"></div>
 
-    <div class="mb-8">
-        <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Public Profile</h2>
-        <p class="text-sm text-gray-500 dark:text-gray-400">Manage how you appear to others on the platform.</p>
-    </div>
+            <img :src="avatarPreviewUrl"
+                 class="relative h-20 w-20 rounded-full object-cover border-2 border-white dark:border-gray-900 shadow-xl"
+                 onerror="this.onerror=null;this.src='/assets/images/default-avatar-1.svg'" alt="Avatar"/>
 
-    <div class="sticky top-0 z-20 space-y-2 mb-4">
-        <template x-if="successMessage">
-            <div class="p-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/30 dark:text-green-400 dark:border-green-800" x-text="successMessage"></div>
-        </template>
-        <template x-if="errorMessage">
-            <div class="p-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/30 dark:text-red-400 dark:border-red-800" x-text="errorMessage"></div>
-        </template>
-    </div>
+            <button @click="$refs.avatarInput.click()"
+                    class="absolute -bottom-1 -right-1 p-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg transform transition hover:scale-110 active:scale-95 border-2 border-white dark:border-gray-800">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                    <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+            </button>
+        </div>
+        <input type="file" class="sr-only" x-ref="avatarInput" @change="handleAvatarChange" accept="image/*"/>
 
-    <div class="space-y-10 pb-10">
-        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Identity</h3>
-                <p class="text-xs text-gray-500">Your avatar and display name.</p>
+        <div class="space-y-1">
+            <h2 class="text-3xl font-black tracking-tight text-gray-900 dark:text-white"
+                x-text="name || 'Anonymous'"></h2>
+            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800">
+                <span class="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">{ userInfo.Role }</span>
             </div>
-            <div class="sm:col-span-2 space-y-6">
-                <div class="flex items-center space-x-6">
-                    <div class="relative group">
-                        <img :src="avatarPreviewUrl"
-                             class="h-20 w-20 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800 shadow-sm"
-                             onerror="this.src='/assets/images/default-avatar.svg'" alt="Avatar"/>
-                        <button @click="$refs.avatarInput.click()"
-                                class="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                        </button>
-                    </div>
-                    <input type="file" class="sr-only" x-ref="avatarInput" @change="handleAvatarChange" accept="image/*"/>
-                    <div class="text-xs text-gray-500">
-                        <p class="font-medium text-gray-700 dark:text-gray-300">Click image to upload</p>
-                        <p>JPG, PNG or GIF. Max 2MB.</p>
-                    </div>
-                </div>
+        </div>
+    </div>
 
-                <form @submit.prevent="updateName" class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Display Name</label>
-                    <div class="flex gap-2">
-                        <input type="text" x-model="name" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"/>
-                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+    <div class="max-w-2xl mx-auto space-y-8">
+        <div class="bg-gray-50/50 dark:bg-gray-800/30 p-1 rounded-3xl border border-gray-100 dark:border-gray-800">
+            <section class="p-6 bg-white dark:bg-gray-900 rounded-[1.4rem] shadow-sm">
+                <form @submit.prevent="updateName" class="space-y-4">
+                    <div class="flex items-center space-x-2 mb-1">
+                        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <label class="text-xs font-bold uppercase tracking-wider text-gray-500">Public
+                            Identifier</label>
+                    </div>
+                    <div class="flex gap-3">
+                        <input type="text" x-model="name"
+                               class="block w-full px-4 py-2.5 rounded-xl border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none text-sm"/>
+                        <button type="submit"
+                                class="px-6 bg-gray-900 dark:bg-white dark:text-gray-900 text-white text-xs font-bold rounded-xl hover:opacity-90 transition-opacity">
                             Save
                         </button>
                     </div>
                 </form>
+            </section>
+        </div>
+
+        <section class="px-4 py-2">
+            <div class="flex items-center justify-between mb-3">
+                <label class="text-xs font-bold uppercase tracking-wider text-gray-500">Biography</label>
+                <span class="text-[9px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded"
+                      x-text="`${bio.length}/160`"></span>
             </div>
+            <textarea x-model="bio" rows="3"
+                      class="block w-full px-4 py-3 rounded-2xl border-2 border-gray-100 dark:border-gray-800 bg-transparent dark:text-white focus:border-indigo-500 transition-colors outline-none resize-none text-sm"
+                      placeholder="Write your origin story..."></textarea>
+            <button @click="updateBio"
+                    class="mt-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline">Update bio
+                description →
+            </button>
         </section>
 
-        <hr class="border-gray-200 dark:border-gray-800" />
-
-        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">About</h3>
-                <p class="text-xs text-gray-500">Tell us a bit about yourself.</p>
-            </div>
-            <div class="sm:col-span-2">
-                <form @submit.prevent="updateBio" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Bio</label>
-                        <textarea x-model="bio" rows="3" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white" placeholder="I love comics and tech..."></textarea>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="group relative overflow-hidden p-6 rounded-3xl bg-gradient-to-br from-gray-900 to-gray-800 dark:from-indigo-950 dark:to-gray-900 text-white shadow-xl">
+                <div class="relative z-10">
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300 opacity-80 mb-3">
+                        Adventurer Since</p>
+                    <div class="flex items-baseline space-x-2">
+                        <span class="text-3xl font-light">{ userInfo.CreatedAt.Format("02") }</span>
+                        <span class="text-xl font-bold uppercase tracking-tight">{ userInfo.CreatedAt.Format("Jan") }</span>
+                        <span class="text-xl font-light opacity-50">{ userInfo.CreatedAt.Format("2006") }</span>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
-                            Update Bio
-                        </button>
+                </div>
+                <svg class="absolute -right-4 -bottom-4 w-24 h-24 text-white/5 transform -rotate-12" fill="currentColor"
+                     viewBox="0 0 24 24">
+                    <path d="M12 2L1 21h22L12 2z"/>
+                </svg>
+            </div>
+
+            <div class="flex items-center justify-between p-6 rounded-3xl border-2 border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm">
+                <div>
+                    <p class="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Account Status</p>
+                    <div class="flex items-center space-x-2">
+                        <div class="relative flex h-2.5 w-2.5">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                        </div>
+                        <span class="text-xl font-bold text-gray-900 dark:text-white">Active</span>
                     </div>
-                </form>
-            </div>
-        </section>
-
-        <hr class="border-gray-200 dark:border-gray-800" />
-
-        <section class="grid grid-cols-1 gap-y-6 sm:grid-cols-3 sm:gap-x-8">
-            <div>
-                <h3 class="text-lg font-medium text-gray-900 dark:text-white">Account Details</h3>
-            </div>
-            <div class="sm:col-span-2 grid grid-cols-2 gap-4">
-                <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Member Since</span>
-                    <span class="text-sm font-medium dark:text-gray-200">{ appContext.Claims.CreatedAt.Format("Jan 2006") }</span>
                 </div>
-                <div class="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
-                    <span class="block text-[10px] uppercase tracking-wider text-gray-500">Account Type</span>
-                    <span class="text-sm font-medium dark:text-gray-200 capitalize">{ appContext.Claims.Role }</span>
+                <div class="h-10 w-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 </div>
 <script>
     function modalProfile() {
         return {
             // Data State
-            name: {{ appContext.Claims.Name }},
+            name: {{ userInfo.Name }},
             bio: "",
-            avatarPreviewUrl: {{ appContext.Claims.AvatarUrl() }},
+            avatarPreviewUrl: {{ userInfo.Picture }},
 
             // UI State
             avatarUploadProgress: 0,
@@ -162,12 +176,12 @@ templ Profile() {
 
             async updateName() {
                 this.isSavingName = true;
-                await this.submitForm('/api/v1/profile/name', { name: this.name }, 'isSavingName', 'Name updated.');
+                await this.submitForm('/api/v1/profile/name', {name: this.name}, 'isSavingName', 'Name updated.');
             },
 
             async updateBio() {
                 this.isSavingBio = true;
-                await this.submitForm('/api/v1/profile/bio', { bio: this.bio }, 'isSavingBio', 'Bio updated.');
+                await this.submitForm('/api/v1/profile/bio', {bio: this.bio}, 'isSavingBio', 'Bio updated.');
             },
 
             async submitForm(endpoint, payload, flag, successMsg) {

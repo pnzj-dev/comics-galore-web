@@ -2,10 +2,12 @@ package views
 
 import "comics-galore-web/cmd/web/components/dialog"
 import "comics-galore-web/cmd/web/scripts"
-import "comics-galore-web/cmd/web/views/helper"
+//import "comics-galore-web/cmd/web/views/helper"
+import "comics-galore-web/cmd/web/components/spinner"
+import "comics-galore-web/cmd/web/handlers/view"
 
 templ Layout() {
-{{appContext := helper.GetAppContext(ctx)}}
+{{appContext := view.GetAppContext2(ctx)}}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,6 +20,9 @@ templ Layout() {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bangers&display=swap" rel="stylesheet">
     <script defer src="/assets/js/htmx.min.js"></script>
+    <script defer src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"></script>
+    <script defer src="https://unpkg.com/htmx.org@1.9.12/dist/ext/debug.js"></script>
+    {{/*<script src="https://unpkg.com/htmx.org/dist/ext/debug.js"></script>*/}}
     if appContext.TurnstileSiteKey != "" && appContext.TurnstileEnabled {
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
     <link href="https://challenges.cloudflare.com" rel="preconnect"/>
@@ -31,7 +36,11 @@ templ Layout() {
       x-bind:class="ui.modal.open ? 'overflow-hidden' : ''" class="bg-gray-50 min-h-screen">
 <div x-data="{form: { cover: '', previews: [] }, formErrors: {}}">
     { children... }
-    @dialog.Dialog()
+    @dialog.Dialog("40rem", "32rem"){
+    <div class="flex flex-col items-center gap-3">
+        @spinner.Circle(spinner.Props{ ID: "modal-loading", Size: 12, Color: "text-indigo-600"})
+    </div>
+    }
 </div>
 </body>
 </html>

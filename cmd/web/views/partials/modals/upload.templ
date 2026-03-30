@@ -50,7 +50,6 @@ templ Upload(){
             <h2 class="font-display text-3xl mb-1">COMIC DETAILS</h2>
             <p class="text-sm text-gray-500 mb-6">Fill in the information about your comic issue.</p>
 
-            ```
             <form id="step1-form"
                   hx-post="/api/comics/validate/info"
                   hx-target="#step1-errors"
@@ -171,7 +170,6 @@ templ Upload(){
                 </button>
             </div>
         </div>
-        ```
 
     </div>
 
@@ -182,8 +180,6 @@ templ Upload(){
         <div class="relative">
             <h2 class="font-display text-3xl mb-1">COVER & PREVIEWS</h2>
             <p class="text-sm text-gray-500 mb-6">Upload the cover image (1) and preview pages (up to 10).</p>
-
-            ```
             <!-- Global step progress -->
             <div x-show="imageUpload.uploading" class="mb-6">
                 <div class="flex justify-between items-center mb-1">
@@ -280,7 +276,6 @@ templ Upload(){
                 </button>
             </div>
         </div>
-        ```
 
     </div>
 
@@ -291,8 +286,6 @@ templ Upload(){
         <div class="relative">
             <h2 class="font-display text-3xl mb-1">COMIC ARCHIVES</h2>
             <p class="text-sm text-gray-500 mb-6">Upload up to 10 archive files (CBZ, CBR, PDF). These go directly to S3.</p>
-
-            ```
             <!-- Global step progress -->
             <div x-show="archiveUpload.uploading || archiveUpload.done > 0" class="mb-6">
                 <div class="flex justify-between items-center mb-1">
@@ -365,7 +358,6 @@ templ Upload(){
                 </button>
             </div>
         </div>
-        ```
 
     </div>
 
@@ -376,8 +368,6 @@ templ Upload(){
         <div class="relative">
             <h2 class="font-display text-3xl mb-1">REVIEW & PUBLISH</h2>
             <p class="text-sm text-gray-500 mb-6">Everything look good? You can clean up text with AI before publishing.</p>
-
-            ```
             <!-- AI Clean button -->
             <div class="flex items-center gap-3 mb-6 p-4" style="background:var(--accent2);border:var(--border);box-shadow:var(--shadow)">
                 <span class="text-2xl">✨</span>
@@ -508,7 +498,6 @@ templ Upload(){
 
             <div id="publish-result" class="mt-4"></div>
         </div>
-        ```
 
     </div>
 

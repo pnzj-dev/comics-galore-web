@@ -2,23 +2,23 @@ package pages
 
 import "comics-galore-web/cmd/web/views"
 import "comics-galore-web/internal/blog"
-import "comics-galore-web/internal/auth"
 import "comics-galore-web/cmd/web/components/details"
 import "comics-galore-web/cmd/web/views/helper"
 import "comics-galore-web/cmd/web/components/header"
 import "comics-galore-web/cmd/web/components/footer"
+import "comics-galore-web/cmd/web/handlers/view"
 
 templ Details(post *blog.Post, related []blog.Post, navItems []header.NavItem){
 {{appContext := helper.GetAppContext(ctx)}}
     @views.Layout(){
-        @header.Header(appContext.Claims, navItems)
-        @DetailsContent(appContext.Claims, post, related)
+        @header.Header(appContext.UserInfo, navItems)
+        @DetailsContent(appContext.UserInfo, post, related)
         @footer.Footer(footerSection, footerLink)
     }
 }
 
 
-templ DetailsContent(user *auth.Claims, post *blog.Post, related []blog.Post){
+templ DetailsContent(user *view.ComicsGaloreClaims, post *blog.Post, related []blog.Post){
 {{ appContext := helper.GetAppContext(ctx)}}
 <div class="p-6">
     @details.Details(post, related, user, appContext.Variants)

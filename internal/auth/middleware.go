@@ -1,9 +1,13 @@
 package auth
 
 import (
+	"comics-galore-web/cmd/web/handlers/view"
 	"comics-galore-web/internal/config"
+	"fmt"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/log"
 	"github.com/golang-jwt/jwt/v5"
+	"log/slog"
 	"time"
 )
 
@@ -22,7 +26,7 @@ func HasSession(cfg config.Service) fiber.Handler {
 	*/
 
 	return func(c fiber.Ctx) error {
-		jwtExtractor := extractors.FromCookie("comics-galore-jwt")
+		jwtExtractor := extractors.FromCookie("cg-auth-local")
 
 		// 1. Use the extractor to get the token
 		tokenStr, err := jwtExtractor.Extract(c)
@@ -32,10 +36,10 @@ func HasSession(cfg config.Service) fiber.Handler {
 			return c.Next()
 		}
 
-		var claims Claims
+		var userInfo UserInfo
 		token, err := jwt.ParseWithClaims(
 			tokenStr,
-			&claims,
+			&userInfo,
 			cfg.Get().JwksFunc.Keyfunc,
 			jwt.WithValidMethods([]string{"EdDSA", "RS256", "PS256", "ES256"}),
 			//jwt.WithIssuer("https://comics-galore-auth-staging.amadioha.workers.dev"),
@@ -50,9 +54,66 @@ func HasSession(cfg config.Service) fiber.Handler {
 		}
 
 		if token != nil && token.Valid {
-			claims.IsLoggedIn = true
-			c.Locals("claims", claims)
-			cfg.GetLogger().Debug("session identified", "user_id", claims.Id)
+			c.Locals("userInfo", userInfo)
+			cfg.GetLogger().Debug("session identified", "user_id", userInfo.ID)
+		}
+
+		return c.Next()
+	}
+}
+
+func SessionLoader(cfg config.Service) fiber.Handler {
+	// Get the logger once from config
+	logger := cfg.GetLogger()
+
+	return func(c fiber.Ctx) error {
+		tokenStr := c.Cookies("cg-auth-local")
+
+		log.Infof("Cookie string => %s", tokenStr)
+
+		if tokenStr == "" {
+			c.Locals("session_loaded", false)
+			return c.Next()
+		}
+
+		var claims view.ComicsGaloreClaims
+		token, err := jwt.ParseWithClaims(
+			tokenStr,
+			&claims,
+			func(token *jwt.Token) (interface{}, error) {
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+				}
+				return []byte(cfg.Get().JwtSecret), nil
+			},
+			jwt.WithValidMethods([]string{"HS256"}),
+			jwt.WithLeeway(60*time.Second),
+		)
+
+		// 2. Structured Error Logging
+		if err != nil {
+			logger.Warn("jwt_parsing_failed",
+				slog.String("error", err.Error()),
+				slog.String("path", c.Path()),
+				slog.String("ip", c.IP()),
+				slog.String("user_agent", c.Get("User-Agent")),
+			)
+			c.Locals("session_loaded", false)
+			return c.Next()
+		}
+
+		// 3. Structured Success Logging
+		if token != nil && token.Valid {
+			c.Locals("claims", &claims)
+
+			c.Locals("userID", claims.UserID)
+			c.Locals("session_loaded", true)
+
+			logger.Debug("session_identified",
+				slog.String("user_id", claims.UserID),
+				slog.String("email", claims.Email),
+				slog.String("role", claims.Role),
+			)
 		}
 
 		return c.Next()
@@ -81,10 +142,10 @@ func JWTProtected(cfg config.Service) fiber.Handler {
 			})
 		}
 
-		claims := &Claims{}
+		userInfo := &UserInfo{}
 		token, err := jwt.ParseWithClaims(
 			tokenStr,
-			claims,
+			userInfo,
 			cfg.Get().JwksFunc.Keyfunc,
 			jwt.WithValidMethods([]string{"EdDSA", "RS256", "PS256", "ES256"}),
 			jwt.WithLeeway(5*time.Second),
@@ -99,15 +160,15 @@ func JWTProtected(cfg config.Service) fiber.Handler {
 		}
 
 		// 5. Business Logic: Check Banned Status
-		if claims.Banned {
-			l.Info("forbidden: banned user attempt", "user_id", claims.Id)
+		if userInfo.Banned {
+			l.Info("forbidden: banned user attempt", "user_id", userInfo.ID)
 			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
 				"error": "Account is banned",
 			})
 		}
 
-		// 6. Persist claims for the rest of the request chain
-		c.Locals("claims", claims)
+		// 6. Persist userInfo for the rest of the request chain
+		c.Locals("userInfo", userInfo)
 		return c.Next()
 	}
 }
@@ -115,13 +176,13 @@ func JWTProtected(cfg config.Service) fiber.Handler {
 // HasRole checks if the user in the context has the required role.
 func HasRole(allowedRoles ...string) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		claims := GetClaims(c)
-		if claims == nil {
+		userInfo := view.GetClaims(c)
+		if userInfo == nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Authentication required"})
 		}
 
 		for _, role := range allowedRoles {
-			if claims.Role == role {
+			if userInfo.Role == role {
 				return c.Next()
 			}
 		}

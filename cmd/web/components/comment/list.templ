@@ -1,12 +1,12 @@
 package comment
 
 import "fmt"
-import "comics-galore-web/internal/auth"
+import "comics-galore-web/cmd/web/handlers/view"
 
 
-templ Section(id string, user *auth.Claims) {
+templ Section(id string, user *view.ComicsGaloreClaims) {
 @Script()
-<div x-data={fmt.Sprintf("commentData('%s','%s','%s','%s')",id,user.Id,user.Name,user.AvatarUrl())}
+<div x-data={fmt.Sprintf("commentData('%s','%s','%s','%s')",id,user.ID,user.Name,user.AvatarUrl())}
      class="max-w-4xl mx-auto bg-white p-4 rounded-xl shadow-sm border border-neutral-100">
     <div class="flex items-center justify-between mb-8">
         <h2 class="text-2xl font-bold text-neutral-900">Comments</h2>

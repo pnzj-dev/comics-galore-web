@@ -5,83 +5,75 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
-	"strings"
+	"github.com/gofiber/fiber/v3/log"
 )
 
-// Now it returns a fiber.Handler (which is func(fiber.Ctx) error)
-func (h *handler) validateInput() fiber.Handler {
-	return func(c fiber.Ctx) error {
-		if c.Method() != fiber.MethodPost {
-			return c.Next()
-		}
-		if c.Request().Header.ContentLength() <= 0 {
-			h.logger.Warn("no content")
-			return c.Next()
-		}
-		path := c.Path()
-		var formInput any
-		var templateName string
-
-		// 1. Identify context based on Path
-		switch {
-		case strings.HasSuffix(path, "/sign-in/email"):
-			formInput = new(auth.LoginInput)
-			templateName = "sign-in"
-			c.Locals("form", templateName)
-			c.Locals("formInput", formInput)
-			break
-		case strings.HasSuffix(path, "/sign-up/email"):
-			formInput = new(auth.SignupInput)
-			templateName = "sign-up"
-			c.Locals("form", templateName)
-			c.Locals("formInput", formInput)
-			break
-		case strings.HasSuffix(path, "/reset-password"):
-			formInput = new(auth.ForgotInput)
-			templateName = "reset-password"
-			c.Locals("form", templateName)
-			c.Locals("formInput", formInput)
-			break
-		default:
-			return c.Next()
-		}
-
-		// 2. Bind the body
-		if err := c.Bind().Body(formInput); err != nil {
-			h.logger.Warn("invalid input format", "path", path, "error", err)
-			return h.renderError(c, templateName, map[string]string{"general": "Invalid input format"})
-		}
-
-		// 3. Structural Validation (using go-playground/validator)
-		// Assuming h.validate is initialized as validator.New()
-		if err := h.validate.Struct(formInput); err != nil {
-			errors := make(map[string]string)
-			// Map validator errors to user-friendly messages
-			for _, err := range err.(validator.ValidationErrors) {
-				field := strings.ToLower(err.Field())
-				errors[field] = fmt.Sprintf("Invalid %s provided", field)
-			}
-			return h.renderError(c, templateName, errors)
-		}
+func (h *handler) validateInput(c fiber.Ctx) error {
+	if c.Method() != fiber.MethodPost {
 		return c.Next()
 	}
+
+	if c.Request().Header.ContentLength() <= 0 {
+		h.logger.Warn("no content")
+		return c.Next()
+	}
+
+	var formInput any
+	formType := h.getFormTypeFromPath(c.Path())
+
+	switch formType {
+	case "sign-in":
+		formInput = new(auth.LoginInput)
+		c.Locals("formInput", formInput)
+	case "sign-up":
+		formInput = new(auth.SignupInput)
+		c.Locals("formInput", formInput)
+	case "reset-password":
+		formInput = new(auth.ForgotInput)
+		c.Locals("formInput", formInput)
+	default:
+		return c.Next()
+	}
+
+	// 2. Bind the body
+	if err := c.Bind().Body(formInput); err != nil {
+		h.logger.Warn("invalid input format", "path", c.Path(), "error", err)
+		return h.renderError(c, formType, map[string]string{"general": "Invalid input format"})
+	}
+
+	// 3. Structural Validation (using go-playground/validator)
+	if err := h.validate.Struct(formInput); err != nil {
+		errors := make(map[string]string)
+		// Map validator errors to user-friendly messages
+		for _, err := range err.(validator.ValidationErrors) {
+			errors[err.Field()] = fmt.Sprintf("Invalid %s provided", err.Field())
+		}
+		return h.renderError(c, formType, errors)
+	}
+	return c.Next()
+
 }
 
-func (h *handler) withCookieSync() fiber.Handler {
-	return func(c fiber.Ctx) error {
-		// 1. Let the request continue to the next handler (the Proxy)
-		if err := c.Next(); err != nil {
-			return err
-		}
+func (h *handler) headerDebugMiddleware(c fiber.Ctx) error {
+	// 1. Let the request continue to your handler/proxy
+	err := c.Next()
 
-		// 2. After the Proxy has finished and populated c.Response()
-		// we check if we need to sync cookies
-		if err := h.syncCookies(c); err != nil {
-			h.logger.Error("failed to sync auth cookies", "error", err)
-			// We don't return the error to the user here because the
-			// main auth action might have actually succeeded.
-		}
+	// 2. After the handler finishes, inspect the response headers
+	log.Info("--- Outgoing Header Debug ---")
+	log.Infof("Status: %d", c.Response().StatusCode())
 
-		return nil
+	// PeekAll returns a [][]byte of all headers with this key
+	setCookies := c.Response().Header.PeekAll("Set-Cookie")
+
+	if len(setCookies) == 0 {
+		log.Warn("No Set-Cookie headers found in this response.")
+	} else {
+		for i, cookie := range setCookies {
+			//c.Append("Set-Cookie", string(cookie))
+			log.Infof("Cookie [%d]: %s", i, string(cookie))
+		}
 	}
+	log.Info("-----------------------------")
+
+	return err
 }

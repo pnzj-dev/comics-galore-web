@@ -1,7 +1,6 @@
 package auth
 
 import (
-	cloudflare2 "comics-galore-web/cmd/web/middlewares/cloudflare"
 	"comics-galore-web/internal/cloudflare"
 	"comics-galore-web/internal/config"
 	"github.com/go-playground/validator/v10"
@@ -31,7 +30,14 @@ func NewHandler(cfg config.Service, turnstile cloudflare.Turnstile) Handler {
 
 func (h *handler) RegisterRoutes(app *fiber.App) {
 	group := app.Group("/api/v1/auth")
-	//group.Use(h.validateInput(), h.withCookieSync(), h.handleAuthResponse)
-	group.Use(cloudflare2.VerifyTurnstile(h.turnstile, h.cfg, h.renderError), h.validateInput(), h.withCookieSync(), h.handleAuthResponse)
+
+	group.Use(
+		h.manageResponse, // Runs LAST (wraps everything)
+		h.headerDebugMiddleware,
+		h.createCookie,    // Runs SECOND TO LAST (wraps proxy)
+		h.verifyTurnstile, // Runs immediately
+		h.validateInput,   // Runs immediately
+	)
+
 	group.All("/*", h.proxyToBetterAuth)
 }

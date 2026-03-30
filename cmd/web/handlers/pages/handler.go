@@ -3,6 +3,7 @@ package pages
 import (
 	"comics-galore-web/cmd/web/components/header"
 	"comics-galore-web/cmd/web/components/pagination"
+	"comics-galore-web/cmd/web/handlers/view"
 	"comics-galore-web/cmd/web/views/pages"
 	"comics-galore-web/internal/auth"
 	"comics-galore-web/internal/blog"
@@ -66,7 +67,7 @@ func (h *handler) renderNotImplemented(c fiber.Ctx, featureName string) error {
 }
 
 func (h *handler) RegisterRoutes(app *fiber.App) {
-	viewGroup := app.Group("/", auth.HasSession(h.cfg), h.ViewMiddleware)
+	viewGroup := app.Group("/", auth.SessionLoader(h.cfg), view.GetAppContext(h.cfg.Get()))
 	viewGroup.Get("/", h.RenderIndexPage)
 	viewGroup.Get("/search", h.RenderSearchPage)
 	viewGroup.Get("/authors", h.RenderAuthorsPage)

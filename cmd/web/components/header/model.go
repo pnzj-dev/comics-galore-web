@@ -8,7 +8,7 @@ type UserProps struct {
 	AvatarURL  string
 }
 
-func NewUserProps(claims *auth.Claims) *UserProps {
+func NewUserProps(claims *auth.UserInfo) *UserProps {
 	return &UserProps{
 		IsLoggedIn: true,
 		Username:   claims.Name,

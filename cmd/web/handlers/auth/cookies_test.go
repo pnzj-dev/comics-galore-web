@@ -2,85 +2,88 @@ package auth
 
 import (
 	"bytes"
-	"comics-galore-web/internal/auth"
+	"comics-galore-web/internal/config"
 	"compress/gzip"
-	"encoding/json"
-	"github.com/valyala/fasthttp"
-	"testing"
-	"time"
-
 	"github.com/gofiber/fiber/v3"
 	"github.com/stretchr/testify/assert"
+	"io"
+	"net/http/httptest"
+	"testing"
 )
 
-func TestSyncCookies(t *testing.T) {
+func TestCreateCookieMiddleware(t *testing.T) {
+	// 1. Setup Mock Config
+	mSvc := config.NewMockService()
+	mSvc.On("Get").Return(&config.Env{
+		AppEnv:    "development",
+		JwtSecret: "test-32-character-secret-key-12345",
+	})
+
+	h := &handler{cfg: mSvc}
 	app := fiber.New()
-	h := &handler{} // Minimal handler for testing
 
-	t.Run("Successfully syncs cookie from valid JWT and Session data", func(t *testing.T) {
-		c := app.AcquireCtx(&fasthttp.RequestCtx{})
-		defer app.ReleaseCtx(c)
+	t.Run("Success - Standard JSON", func(t *testing.T) {
+		// Setup a route that mimics the proxy response
+		app.Get("/test-success", h.createCookie, func(c fiber.Ctx) error {
+			c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+			return c.SendString(`{
+                "user": {"id": "123", "email": "test@test.com", "role": "user"},
+                "session": {"expiresAt": "2026-12-31T23:59:59Z", "token": "abc"}
+            }`)
+		})
 
-		// 1. Setup Mock Response Headers
-		jwtValue := "mock-token-123"
-		c.Response().Header.Set("Set-Auth-Jwt", jwtValue)
+		req := httptest.NewRequest("GET", "/test-success", nil)
+		resp, _ := app.Test(req)
 
-		// 2. Setup Mock Session Body
-		expiry := time.Now().Add(24 * time.Hour)
-		sessionData := auth.GetSession{
-			Session: auth.Session{ExpiresAt: expiry},
-		}
-		body, _ := json.Marshal(sessionData)
-		c.Response().SetBody(body)
-
-		// 3. Execute
-		err := h.syncCookies(c)
-		assert.NoError(t, err)
-
-		// 4. Assertions
-		setCookieHeader := string(c.Response().Header.Peek("Set-Cookie"))
-
-		assert.Contains(t, setCookieHeader, "comics-galore-jwt="+jwtValue)
-		assert.Contains(t, setCookieHeader, "path=/")
-		assert.Contains(t, setCookieHeader, "HttpOnly")
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+		// Verify cookie exists and is named correctly for dev
+		assert.Contains(t, resp.Header.Get("Set-Cookie"), "cg-auth-local")
+		// Verify body was cleared by ResetBody()
+		body, _ := io.ReadAll(resp.Body)
+		assert.Empty(t, body)
 	})
 
-	t.Run("Handles Gzip compressed response body", func(t *testing.T) {
-		c := app.AcquireCtx(&fasthttp.RequestCtx{})
-		defer app.ReleaseCtx(c)
+	t.Run("Success - Gzipped JSON", func(t *testing.T) {
+		app.Get("/test-gzip", h.createCookie, func(c fiber.Ctx) error {
+			json := `{"user": {"id": "456"}, "session": {"expiresAt": "2026-12-31T23:59:59Z"}}`
 
-		jwtValue := "gzip-token-456"
-		c.Response().Header.Set("Set-Auth-Jwt", jwtValue)
-		c.Response().Header.Set("Content-Encoding", "gzip")
+			var buf bytes.Buffer
+			gz := gzip.NewWriter(&buf)
+			_, _ = gz.Write([]byte(json))
+			_ = gz.Close()
 
-		// Create Gzipped body
-		sessionData := auth.GetSession{
-			Session: auth.Session{ExpiresAt: time.Now().Add(time.Hour)},
-		}
-		var buf bytes.Buffer
-		gz := gzip.NewWriter(&buf)
-		_ = json.NewEncoder(gz).Encode(sessionData)
-		err := gz.Close()
-		if err != nil {
-			return
-		}
-		c.Response().SetBody(buf.Bytes())
+			c.Set(fiber.HeaderContentEncoding, "gzip")
+			c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSON)
+			return c.Send(buf.Bytes())
+		})
 
-		err = h.syncCookies(c)
-		assert.NoError(t, err)
+		req := httptest.NewRequest("GET", "/test-gzip", nil)
+		resp, _ := app.Test(req)
 
-		// Verify the response header contains the cookie
-		setCookie := string(c.Response().Header.Peek("Set-Cookie"))
-		assert.Contains(t, setCookie, "comics-galore-jwt="+jwtValue)
+		assert.Equal(t, fiber.StatusOK, resp.StatusCode)
+		assert.Contains(t, resp.Header.Get("Set-Cookie"), "cg-auth-local")
 	})
 
-	t.Run("Returns nil if Set-Auth-Jwt header is missing", func(t *testing.T) {
-		c := app.AcquireCtx(&fasthttp.RequestCtx{})
-		defer app.ReleaseCtx(c)
+	t.Run("Failure - Empty Body", func(t *testing.T) {
+		app.Get("/test-empty", h.createCookie, func(c fiber.Ctx) error {
+			return c.SendStatus(fiber.StatusNoContent)
+		})
 
-		err := h.syncCookies(c)
+		req := httptest.NewRequest("GET", "/test-empty", nil)
+		resp, _ := app.Test(req)
 
-		assert.NoError(t, err)
-		assert.Empty(t, c.Cookies("comics-galore-jwt"))
+		// Middleware should return nil and not set a cookie if body is empty
+		assert.Empty(t, resp.Header.Get("Set-Cookie"))
+	})
+
+	t.Run("Failure - Invalid JSON", func(t *testing.T) {
+		app.Get("/test-invalid", h.createCookie, func(c fiber.Ctx) error {
+			return c.SendString(`{invalid-json`)
+		})
+
+		req := httptest.NewRequest("GET", "/test-invalid", nil)
+		resp, _ := app.Test(req)
+
+		assert.Empty(t, resp.Header.Get("Set-Cookie"))
 	})
 }

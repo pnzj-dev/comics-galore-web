@@ -3,72 +3,72 @@ package auth
 import (
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"net/url"
 	"time"
 )
 
-type Session struct {
-	ExpiresAt      time.Time `json:"expiresAt"`
-	Token          string    `json:"token"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	IpAddress      string    `json:"ipAddress"`
-	UserAgent      string    `json:"userAgent"`
-	UserId         string    `json:"userId"`
-	ImpersonatedBy *string   `json:"impersonatedBy"`
-	Id             string    `json:"id"`
+/*type ComicsGaloreClaims struct {
+
+	// Custom Identity Claims
+	Name          string `json:"name"`
+	UserID        string `json:"sub"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"ver"`
+	Picture       string `json:"img,omitempty"`
+
+	// Authorization & Status Claims
+	Role           string `json:"role"`
+	IsBanned       bool   `json:"ban"`
+	BanReason      string `json:"banr"`
+	MembershipPlan string `json:"plan"`
+
+	// Standard Claims
+	jwt.RegisteredClaims
+}*/
+
+type UserSession struct {
+	User    UserInfo    `json:"user"`
+	Session SessionInfo `json:"session"` // Assuming Better-Auth returns a session object alongside user
 }
 
-type User struct {
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	EmailVerified  bool      `json:"emailVerified"`
-	Image          *string   `json:"image"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	Role           string    `json:"role"`
-	Banned         bool      `json:"banned"`
-	BanReason      *string   `json:"banReason"`
-	BanExpires     *string   `json:"banExpires"`
-	MembershipPlan string    `json:"membershipPlan"`
-	Id             string    `json:"id"`
-}
-
-type GetSession struct {
-	Session Session `json:"session"`
-	User    User    `json:"user"`
-}
-
-type Claims struct {
-	IsLoggedIn     bool      `json:"isLoggedIn,omitempty"`
-	Name           string    `json:"name"`
-	Email          string    `json:"email"`
-	EmailVerified  bool      `json:"emailVerified"`
-	Image          *string   `json:"image"`
-	CreatedAt      time.Time `json:"createdAt"`
-	UpdatedAt      time.Time `json:"updatedAt"`
-	Role           string    `json:"role"`
-	Banned         bool      `json:"banned"`
-	BanReason      *string   `json:"banReason"`
-	NightMode      bool      `json:"nightMode"`
-	BanExpires     *string   `json:"banExpires"`
-	MembershipPlan string    `json:"membershipPlan"`
-	Id             string    `json:"id"`
+type UserInfo struct {
+	ID             string     `json:"id"`
+	Name           string     `json:"name"`
+	Email          string     `json:"email"`
+	EmailVerified  bool       `json:"emailVerified"`
+	Image          string     `json:"image"`
+	Role           string     `json:"role"`
+	NightMode      bool       `json:"nightMode,omitempty"`
+	Banned         bool       `json:"banned"`
+	BanReason      string     `json:"banReason"`
+	BanExpires     *time.Time `json:"banExpires"` // Pointer for nullability
+	MembershipPlan string     `json:"membershipPlan"`
+	CreatedAt      time.Time  `json:"createdAt"`
+	UpdatedAt      time.Time  `json:"updatedAt"`
 	jwt.RegisteredClaims
 }
 
-func (c *Claims) AvatarUrl() string {
-	if c.Image != nil {
-		return *c.Image
+type SessionInfo struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+	Token     string    `json:"token"`
+}
+
+func (u *UserInfo) AvatarUrl() string {
+	if u.Image != "" {
+		return u.Image
 	}
-	return fmt.Sprintf("https://ui-avatars.com/api/?name=%s", c.Name)
+	if u.Name != "" {
+		return fmt.Sprintf("https://ui-avatars.com/api/?name=%s", url.QueryEscape(u.Name))
+	}
+	return "/assets/images/image-avatar-placeholder.svg"
 }
 
-func (c *Claims) AvatarAlt() string {
-	return c.Email + "'s avatar"
+func (u *UserInfo) AvatarAlt() string {
+	return u.Email + "'s avatar"
 }
 
-func (c *Claims) GetFirstLetter() string {
-	runes := []rune(c.Name)
+func (u *UserInfo) GetFirstLetter() string {
+	runes := []rune(u.Name)
 	if len(runes) > 0 {
 		return string(runes[0])
 	}

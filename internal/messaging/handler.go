@@ -42,7 +42,7 @@ func (h *handler) RegisterRoutes(app *fiber.App) {
 }
 
 func (h *handler) List(c fiber.Ctx) error {
-	userID, ok := c.Locals("userId").(string)
+	userID, ok := c.Locals("userID").(string)
 	l := h.logger.With("op", "List", "user_id", userID)
 
 	if !ok || userID == "" {
@@ -173,7 +173,7 @@ func (h *handler) Delete(c fiber.Ctx) error {
 }
 
 func (h *handler) StartDirectChat(c fiber.Ctx) error {
-	userID, _ := c.Locals("userId").(string)
+	userID, _ := c.Locals("userID").(string)
 	otherUserID := c.Params("otherUserId")
 
 	l := h.logger.With("op", "StartDirectChat", "user_id", userID, "target_user_id", otherUserID)
